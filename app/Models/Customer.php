@@ -1,0 +1,14 @@
+<?php
+namespace App\Models;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Customer extends Model
+{
+    use SoftDeletes;
+    protected $fillable = ['name','phone','cnic','address','email','linked_user_id','shop_id','notes'];
+
+    public function linkedUser() { return $this->belongsTo(User::class, 'linked_user_id'); }
+    public function shop()       { return $this->belongsTo(Shop::class); }
+    public function documents()  { return $this->hasMany(CustomerDocument::class); }
+}
