@@ -1,23 +1,24 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Owner;
 use App\Models\OwnerLedger;
 use App\Models\Market;
 use App\Models\Shop;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class OwnerLedgerController extends Controller
 {
     public function index()
     {
-        $owners        = User::orderBy('name')->get();
+        // Load from the OWNERS table (not users)
+        $owners        = Owner::orderBy('name')->get();
         $selectedOwner = null;
-        $ledgers       = (new OwnerLedger)->newQuery()->whereRaw('0=1')->paginate(20); // empty paginator
+        $ledgers       = (new OwnerLedger)->newQuery()->whereRaw('0=1')->paginate(20);
         $balance       = 0;
 
         if (request('owner_id')) {
-            $selectedOwner = User::find(request('owner_id'));
+            $selectedOwner = Owner::find(request('owner_id'));
             if ($selectedOwner) {
                 $ledgers = OwnerLedger::with(['market', 'shop'])
                     ->where('owner_id', $selectedOwner->id)
@@ -39,7 +40,7 @@ class OwnerLedgerController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'owner_id'         => 'required|exists:users,id',
+            'owner_id'         => 'required|exists:owners,id',
             'market_id'        => 'nullable|exists:markets,id',
             'shop_id'          => 'nullable|exists:shops,id',
             'transaction_type' => 'required|in:debit,credit',

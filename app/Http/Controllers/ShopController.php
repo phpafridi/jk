@@ -13,6 +13,7 @@ class ShopController extends Controller
     {
         $data = $request->validate([
             'shop_number'     => 'required|string|max:255',
+            'customer_id'     => 'nullable|exists:customers,id',
             'owner_id'        => 'nullable|exists:owners,id',
             'type'            => 'required|in:instalment,rent,sell,purchase',
             'date_of_payment' => 'nullable|date',
@@ -82,14 +83,16 @@ class ShopController extends Controller
 
     public function uploadDocument(Request $request, Shop $shop)
     {
-        $request->validate(['document' => 'required|file|max:10240', 'name' => 'nullable|string|max:255']);
-        $path = $request->file('document')->store('shop-documents', 'public');
-        $shop->documents()->create([
-            'name' => $request->input('name', $request->file('document')->getClientOriginalName()),
-            'path' => $path,
-            'type' => str_contains($request->file('document')->getMimeType(), 'image') ? 'image' : 'pdf',
-        ]);
-        return redirect()->route('shops.show', $shop)->with('success', 'Document uploaded.');
+        $request->validate(['documents.*' => 'required|file|max:10240']);
+        foreach ($request->file('documents', []) as $file) {
+            $path = $file->store('shop-documents', 'public');
+            $shop->documents()->create([
+                'name' => $file->getClientOriginalName(),
+                'path' => $path,
+                'type' => str_contains($file->getMimeType(), 'image') ? 'image' : 'pdf',
+            ]);
+        }
+        return redirect()->route('shops.show', $shop)->with('success', 'Document(s) uploaded.');
     }
 
     public function deleteDocument(ShopDocument $document)

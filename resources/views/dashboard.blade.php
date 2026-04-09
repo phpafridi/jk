@@ -16,7 +16,7 @@
             <div class="mt-2 text-xs text-indigo-600 font-medium">{{ number_format($stats['shops']) }} shops total</div>
         </a>
 
-        <a href="{{ route('rent.index') }}" class="card-stat bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:border-emerald-300 group">
+        <a href="{{ route('rent.markets.index') }}" class="card-stat bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:border-emerald-300 group">
             <div class="flex items-start justify-between mb-3">
                 <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-600 transition-colors">
                     <i class="fas fa-key text-emerald-600 group-hover:text-white transition-colors"></i>
@@ -80,7 +80,7 @@
                     <i class="fas fa-plus-circle"></i> Add New Market
                 </button>
                 @endcan
-                <a href="{{ route('rent.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-medium transition-colors">
+                <a href="{{ route('rent.markets.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-medium transition-colors">
                     <i class="fas fa-receipt"></i> Add Rent Entry
                 </a>
                 <a href="{{ route('sell.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-sm font-medium transition-colors">

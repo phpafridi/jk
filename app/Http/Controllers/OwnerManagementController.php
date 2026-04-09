@@ -13,7 +13,7 @@ class OwnerManagementController extends Controller
 
     public function index(Request $request)
     {
-        $query = Owner::withCount(['shops','rentEntries','ledgers']);
+        $query = Owner::withCount(['shops','ledgers']);
         if ($request->search) {
             $s = $request->search;
             $query->where(function($q) use ($s) {

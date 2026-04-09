@@ -162,11 +162,11 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Owner</label>
-                    <select name="owner_id" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">— Select Owner —</option>
-                        @foreach(\App\Models\Owner::orderBy('name')->get() as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Customer</label>
+                    <select name="customer_id" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">— Select Customer —</option>
+                        @foreach(\App\Models\Customer::orderBy('name')->get() as $cust)
+                        <option value="{{ $cust->id }}">{{ $cust->name }}{{ $cust->phone ? ' — '.$cust->phone : '' }}</option>
                         @endforeach
                     </select>
                 </div>

@@ -21,7 +21,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('market_id')->constrained()->cascadeOnDelete();
             $table->string('shop_number');
-            $table->foreignId('owner_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('owner_id')->nullable()->constrained('owners')->nullOnDelete();
             $table->string('type')->default('instalment'); // instalment, rent, sell, purchase
             $table->date('date_of_payment')->nullable();
             $table->decimal('total_amount', 15, 2)->default(0);
@@ -59,7 +59,7 @@ return new class extends Migration {
             $table->string('shop_number');
             $table->decimal('rent', 15, 2);
             $table->date('date');
-            $table->foreignId('owner_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('customer_id')->nullable()->constrained('customers')->nullOnDelete();
             $table->string('received_by')->nullable();
             $table->decimal('amount_paid', 15, 2)->default(0);
             $table->text('notes')->nullable();
@@ -107,7 +107,7 @@ return new class extends Migration {
 
         Schema::create('owner_ledgers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('owner_id')->nullable()->constrained('owners')->nullOnDelete();
             $table->foreignId('market_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('shop_id')->nullable()->constrained()->nullOnDelete();
             $table->string('transaction_type'); // debit, credit

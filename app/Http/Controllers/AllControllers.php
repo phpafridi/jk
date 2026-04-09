@@ -21,28 +21,32 @@ class RentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = RentEntry::with(['shop.market', 'owner']);
+        $query = RentEntry::with(['shop.market', 'customer']);
         if ($request->search) {
             $query->where('shop_number', 'like', "%{$request->search}%");
         }
-        $entries = $query->latest()->paginate(15);
-        $shops   = Shop::with('market')->where('type','rent')->get();
-        $owners  = Owner::orderBy('name')->get();
-        return view('rent.index', compact('entries', 'shops', 'owners'));
+        if ($request->market_id) {
+            $query->whereHas('shop', fn($q) => $q->where('market_id', $request->market_id));
+        }
+        $entries  = $query->latest()->paginate(15);
+        $markets  = \App\Models\Market::orderBy('name')->get();
+        $shops    = Shop::with('market')->where('type','rent')->get();
+        $customers = \App\Models\Customer::orderBy('name')->get(['id','name','phone','cnic']);
+        return view('rent.index', compact('entries', 'shops', 'markets', 'customers'));
     }
 
     public function store(Request $request)
     {
         $this->authorize('manage rent');
         $data = $request->validate([
-            'shop_id'     => 'required|exists:shops,id',
-            'shop_number' => 'required|string',
-            'rent'        => 'required|numeric|min:0',
-            'date'        => 'required|date',
-            'owner_id'    => 'nullable|exists:owners,id',
-            'received_by' => 'nullable|string',
-            'amount_paid' => 'nullable|numeric|min:0',
-            'notes'       => 'nullable|string',
+            'shop_id'      => 'required|exists:shops,id',
+            'shop_number'  => 'required|string',
+            'rent'         => 'required|numeric|min:0',
+            'date'         => 'required|date',
+            'customer_id'  => 'nullable|exists:customers,id',
+            'received_by'  => 'nullable|string',
+            'amount_paid'  => 'nullable|numeric|min:0',
+            'notes'        => 'nullable|string',
         ]);
 
         RentEntry::create($data);
@@ -239,9 +243,8 @@ class CustomerController extends Controller
             });
         }
         $customers = $query->latest()->paginate(15);
-        $users     = User::all();
-        $shops     = Shop::with('market')->get();
-        return view('customers.index', compact('customers', 'users', 'shops'));
+        $shops     = Shop::with('market')->where('type','instalment')->get();
+        return view('customers.index', compact('customers', 'shops'));
     }
 
     public function show(Customer $customer)

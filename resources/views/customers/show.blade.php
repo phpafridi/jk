@@ -62,15 +62,7 @@
                         </div>
                     </div>
                     @endif
-                    @if($customer->linkedUser)
-                    <div class="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
-                        <i class="fas fa-user-circle text-purple-600 w-4"></i>
-                        <div>
-                            <p class="text-xs text-purple-500">Linked User</p>
-                            <p class="text-sm font-semibold text-purple-700">{{ $customer->linkedUser->name }}</p>
-                        </div>
-                    </div>
-                    @endif
+
                     @if($customer->notes)
                     <div class="p-3 bg-amber-50 rounded-xl border border-amber-100">
                         <p class="text-xs text-amber-600 font-medium mb-1">Notes</p>
@@ -80,39 +72,81 @@
                 </div>
             </div>
 
-            <!-- Documents -->
+            <!-- Documents Album -->
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
                 <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                    <i class="fas fa-paperclip text-indigo-500"></i> Documents
+                    <i class="fas fa-images text-indigo-500"></i> Documents &amp; Album
                 </h3>
-                @if($customer->documents->isEmpty())
-                    <p class="text-xs text-slate-400 text-center py-3">No documents uploaded</p>
-                @else
-                <div class="space-y-2">
-                    @foreach($customer->documents as $doc)
-                    <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                        <i class="fas {{ $doc->type === 'image' ? 'fa-image text-blue-500' : 'fa-file-alt text-slate-400' }} text-sm flex-shrink-0"></i>
-                        @if($doc->type === 'image')
-                        <a href="{{ Storage::url($doc->path) }}" target="_blank" class="flex-1 text-xs text-slate-600 truncate hover:text-indigo-600">{{ $doc->name }}</a>
-                        @else
-                        <a href="{{ Storage::url($doc->path) }}" download class="flex-1 text-xs text-slate-600 truncate hover:text-indigo-600">{{ $doc->name }}</a>
-                        @endif
-                        @can('manage customers')
-                        <form method="POST" action="{{ route('customers.documents.destroy', $doc) }}" onsubmit="return confirm('Delete?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-red-400 hover:text-red-600 text-xs"><i class="fas fa-times"></i></button>
-                        </form>
-                        @endcan
+
+                @php
+                    $images = $customer->documents->where('type','image');
+                    $files  = $customer->documents->where('type','!=','image');
+                @endphp
+
+                {{-- Image Album Grid --}}
+                @if($images->isNotEmpty())
+                <div class="mb-3">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Photos</p>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        @foreach($images as $doc)
+                        <div class="relative group aspect-square rounded-xl overflow-hidden bg-slate-100">
+                            <a href="{{ Storage::url($doc->path) }}" target="_blank">
+                                <img src="{{ Storage::url($doc->path) }}" alt="{{ $doc->name }}"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200">
+                            </a>
+                            @can('manage customers')
+                            <form method="POST" action="{{ route('customers.documents.destroy', $doc) }}" onsubmit="return confirm('Delete photo?')"
+                                  class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs flex items-center justify-center shadow">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+                            @endcan
+                        </div>
+                        @endforeach
                     </div>
-                    @endforeach
                 </div>
                 @endif
 
+                {{-- File list --}}
+                @if($files->isNotEmpty())
+                <div class="mb-3">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Files</p>
+                    <div class="space-y-1.5">
+                        @foreach($files as $doc)
+                        <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                            <i class="fas fa-file-alt text-slate-400 text-sm flex-shrink-0"></i>
+                            <a href="{{ Storage::url($doc->path) }}" download class="flex-1 text-xs text-slate-600 truncate hover:text-indigo-600">{{ $doc->name }}</a>
+                            @can('manage customers')
+                            <form method="POST" action="{{ route('customers.documents.destroy', $doc) }}" onsubmit="return confirm('Delete?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-red-400 hover:text-red-600 text-xs"><i class="fas fa-times"></i></button>
+                            </form>
+                            @endcan
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                @if($customer->documents->isEmpty())
+                    <p class="text-xs text-slate-400 text-center py-3">No documents uploaded yet</p>
+                @endif
+
                 @can('manage customers')
-                <form method="POST" action="{{ route('customers.update', $customer) }}" enctype="multipart/form-data" class="mt-3">
+                <form method="POST" action="{{ route('customers.update', $customer) }}" enctype="multipart/form-data" class="mt-3 border-t border-slate-100 pt-3">
                     @csrf @method('PUT')
                     <input type="hidden" name="name" value="{{ $customer->name }}">
-                    <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx" class="w-full text-xs text-slate-600 mb-2">
+                    <input type="hidden" name="phone" value="{{ $customer->phone }}">
+                    <input type="hidden" name="cnic" value="{{ $customer->cnic }}">
+                    <input type="hidden" name="address" value="{{ $customer->address }}">
+                    <input type="hidden" name="email" value="{{ $customer->email }}">
+                    <input type="hidden" name="shop_id" value="{{ $customer->shop_id }}">
+                    <input type="hidden" name="notes" value="{{ $customer->notes }}">
+                    <label class="block text-xs font-medium text-slate-700 mb-1">Upload Photos / Files</label>
+                    <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx"
+                           class="w-full text-xs text-slate-600 mb-2 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:text-xs hover:file:bg-indigo-100">
                     <button type="submit" class="w-full py-2 border border-indigo-300 text-indigo-600 rounded-xl text-xs font-medium hover:bg-indigo-50 transition-colors">
                         <i class="fas fa-upload mr-1"></i> Upload Files
                     </button>
@@ -243,15 +277,6 @@
                             <option value="{{ $shop->id }}" {{ $customer->shop_id == $shop->id ? 'selected' : '' }}>
                                 {{ $shop->market->name }} #{{ $shop->shop_number }}
                             </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Link to User</label>
-                        <select name="linked_user_id" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="">— None —</option>
-                            @foreach(\App\Models\User::all() as $user)
-                            <option value="{{ $user->id }}" {{ $customer->linked_user_id == $user->id ? 'selected' : '' }}>{{ $user->name }}</option>
                             @endforeach
                         </select>
                     </div>

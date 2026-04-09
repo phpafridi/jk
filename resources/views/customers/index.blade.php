@@ -111,15 +111,7 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">Address</label>
                         <input type="text" name="address" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Link to User Account</label>
-                        <select name="linked_user_id" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="">— Optional —</option>
-                            @foreach($users as $user)
-                            <option value="{{ $user->id }}">{{ $user->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Link to Shop</label>
                         <select name="shop_id" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">

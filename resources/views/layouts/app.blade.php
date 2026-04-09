@@ -83,8 +83,8 @@
             <a href="{{ route('markets.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('markets.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
                 <i class="fas fa-store w-5 text-center"></i> Instalment Markets
             </a>
-            <a href="{{ route('rent.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('rent.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
-                <i class="fas fa-key w-5 text-center"></i> Rent
+            <a href="{{ route('rent.markets.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('rent.markets.*') || request()->routeIs('rent.shops.*') || request()->routeIs('rent.entries.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
+                <i class="fas fa-key w-5 text-center"></i> Rent Markets
             </a>
             <a href="{{ route('sell.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('sell.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
                 <i class="fas fa-exchange-alt w-5 text-center"></i> Sell / Purchase

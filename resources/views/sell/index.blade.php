@@ -45,7 +45,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @foreach($entries as $entry)
-                    <tr class="hover:bg-slate-50 transition-colors">
+                    <tr class="hover:bg-indigo-50 transition-colors cursor-pointer" onclick="window.location='{{ route('sell.show', $entry) }}'"  title="View details">
                         <td class="px-5 py-3">
                             <div class="flex flex-col gap-1">
                                 <span class="text-xs px-2 py-1 rounded-full font-medium w-fit
@@ -69,10 +69,10 @@
                             <p class="text-xs text-slate-400">{{ $entry->buyer_phone ?? $entry->buyer_cnic ?? '' }}</p>
                         </td>
                         <td class="px-5 py-3 text-right font-bold text-slate-800">Rs {{ number_format($entry->total, 0) }}</td>
-                        <td class="px-5 py-3 text-slate-500 text-xs">{{ $entry->market->name ?? '—' }}</td>
+                        <td class="px-5 py-3 text-slate-500 text-xs">{{ ($entry->sellMarket->name ?? $entry->market->name ?? '—') ?? '—' }}</td>
                         <td class="px-5 py-3 text-right">
                             @can('manage sell purchase')
-                            <form method="POST" action="{{ route('sell.destroy', $entry) }}" onsubmit="return confirm('Delete?')">
+                            <form method="POST" action="{{ route('sell.destroy', $entry) }}" onsubmit="return confirm('Delete?')" onclick="event.stopPropagation()">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
                                     <i class="fas fa-trash text-xs"></i>
@@ -146,7 +146,8 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Market</label>
-                            <select name="market_id" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <select name="sell_market_id" id="sell-market-select" onchange="filterSellShops(this)"
+                                    class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="">— Select Market —</option>
                                 @foreach($markets as $market)
                                 <option value="{{ $market->id }}">{{ $market->name }}</option>
@@ -154,8 +155,23 @@
                             </select>
                         </div>
                         <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Pick Shop (optional)</label>
+                            <select id="sell-shop-select" onchange="fillSellShopNumber(this)"
+                                    class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">— Select Shop —</option>
+                                @foreach($markets as $market)
+                                    @foreach($market->shops as $shop)
+                                    <option value="{{ $shop->shop_number }}" data-market="{{ $market->id }}">
+                                        {{ $market->name }} – Shop #{{ $shop->shop_number }}
+                                    </option>
+                                    @endforeach
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Shop / Plot Number</label>
-                            <input type="text" name="shop_or_item_number" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" name="shop_or_item_number" id="sell-item-number"
+                                   class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-4">
@@ -169,7 +185,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Total (Rs) *</label>
-                            <input type="number" name="total" required min="0" step="0.01" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0">
+                            <input type="number" id="sell-total-shopplot" min="0" step="0.01" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0">
                         </div>
                     </div>
                 </div>
@@ -195,9 +211,12 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Total Price (Rs) *</label>
-                        <input type="number" name="total" min="0" step="0.01" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0">
+                        <input type="number" id="sell-total-car" min="0" step="0.01" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0">
                     </div>
                 </div>
+
+                {{-- Single hidden real total field --}}
+                <input type="hidden" name="total" id="sell-total-hidden" value="0">
 
                 {{-- SELLER --}}
                 <div class="border border-slate-200 rounded-xl p-4 space-y-3">
@@ -287,6 +306,25 @@
     <script>
     const sellCustomers = <?php echo json_encode($customers->map(fn($c)=>['id'=>$c->id,'name'=>$c->name,'phone'=>$c->phone??'','cnic'=>$c->cnic??''])->values()); ?>;
 
+    // Sync visible total inputs to hidden field before submit
+    document.querySelector('#modal-add-sell form').addEventListener('submit', function(){
+        const carSection = document.getElementById('sell-total-car').closest('div[x-show]');
+        const isCar = carSection && window.getComputedStyle(carSection).display !== 'none';
+        const val = isCar
+            ? document.getElementById('sell-total-car').value
+            : document.getElementById('sell-total-shopplot').value;
+        document.getElementById('sell-total-hidden').value = val || '0';
+    });
+
+    // Clear totals on type switch
+    document.querySelectorAll('input[name="entry_type"]').forEach(function(r){
+        r.addEventListener('change', function(){
+            document.getElementById('sell-total-car').value = '';
+            document.getElementById('sell-total-shopplot').value = '';
+            document.getElementById('sell-total-hidden').value = '0';
+        });
+    });
+
     function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"\\'"); }
 
     function liveSearch(input, ddId, hiddenId, dataset, role){
@@ -321,6 +359,22 @@
         if(nameEl)  nameEl.value  = name;
         if(cnicEl)  cnicEl.value  = cnic;
         if(phoneEl) phoneEl.value = phone;
+    }
+
+    function filterSellShops(marketSelect){
+        const mid = marketSelect.value;
+        const shopSel = document.getElementById('sell-shop-select');
+        Array.from(shopSel.options).forEach(opt => {
+            if(!opt.value) return;
+            opt.style.display = (!mid || opt.dataset.market == mid) ? '' : 'none';
+        });
+        shopSel.value = '';
+        document.getElementById('sell-item-number').value = '';
+    }
+
+    function fillSellShopNumber(select){
+        const opt = select.options[select.selectedIndex];
+        if(opt.value) document.getElementById('sell-item-number').value = opt.value;
     }
 
     document.addEventListener('click', e=>{

@@ -12,7 +12,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <!-- LEFT: Shop Info + Stats -->
+        <!-- LEFT: Shop Info + Add Payment -->
         <div class="space-y-4">
             <!-- Shop Card -->
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -37,6 +37,19 @@
                         <div>
                             <p class="text-xs text-slate-500">Owner</p>
                             <p class="text-sm font-medium text-slate-800">{{ $shop->owner->name }}</p>
+                        </div>
+                    </div>
+                    @endif
+                    @if($shop->customers->isNotEmpty())
+                    <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                            <i class="fas fa-users text-purple-600 text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500">Customer</p>
+                            @foreach($shop->customers->take(2) as $c)
+                            <p class="text-sm font-medium text-slate-800">{{ $c->name }}</p>
+                            @endforeach
                         </div>
                     </div>
                     @endif
@@ -76,11 +89,13 @@
                     @csrf
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Amount (Rs) *</label>
-                        <input type="number" name="amount" required min="0.01" step="0.01" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                        <input type="number" name="amount" required min="0.01" step="0.01"
+                               class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Payment Date *</label>
-                        <input type="date" name="payment_date" required value="{{ date('Y-m-d') }}" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="date" name="payment_date" required value="{{ date('Y-m-d') }}"
+                               class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Method</label>
@@ -100,51 +115,13 @@
                     </button>
                 </form>
             </div>
-
-            <!-- Upload Documents -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <i class="fas fa-paperclip text-indigo-500"></i> Documents & Images
-                </h3>
-                <form method="POST" action="{{ route('shops.documents.store', $shop) }}" enctype="multipart/form-data">
-                    @csrf
-                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-indigo-400 transition-colors">
-                        <i class="fas fa-cloud-upload-alt text-slate-400 text-2xl mb-2"></i>
-                        <p class="text-xs text-slate-500 mb-2">Upload images, PDFs, or documents</p>
-                        <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx" class="w-full text-xs text-slate-600">
-                    </div>
-                    <button type="submit" class="w-full mt-3 py-2 border border-indigo-300 text-indigo-600 rounded-xl text-sm font-medium hover:bg-indigo-50 transition-colors">
-                        <i class="fas fa-upload mr-1"></i> Upload Files
-                    </button>
-                </form>
-
-                <!-- Existing Documents -->
-                @if($shop->documents->isNotEmpty())
-                <div class="mt-4 space-y-2">
-                    @foreach($shop->documents as $doc)
-                    <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                        <i class="fas {{ $doc->type === 'image' ? 'fa-image text-blue-500' : 'fa-file-alt text-slate-400' }} text-sm flex-shrink-0"></i>
-                        @if($doc->type === 'image')
-                        <a href="{{ Storage::url($doc->path) }}" target="_blank" class="flex-1 text-xs text-slate-600 truncate hover:text-indigo-600">{{ $doc->name }}</a>
-                        @else
-                        <a href="{{ Storage::url($doc->path) }}" download class="flex-1 text-xs text-slate-600 truncate hover:text-indigo-600">{{ $doc->name }}</a>
-                        @endif
-                        <form method="POST" action="{{ route('shops.documents.destroy', $doc) }}" onsubmit="return confirm('Delete?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-red-400 hover:text-red-600 text-xs">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </form>
-                    </div>
-                    @endforeach
-                </div>
-                @endif
-            </div>
             @endcan
         </div>
 
-        <!-- RIGHT: Payment Ledger -->
-        <div class="lg:col-span-2">
+        <!-- RIGHT: Payment Ledger + Documents -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Payment Ledger -->
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
                 <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                     <h3 class="font-semibold text-slate-800 flex items-center gap-2">
@@ -152,7 +129,6 @@
                     </h3>
                     <span class="text-sm text-slate-500">{{ $shop->payments->count() }} entries</span>
                 </div>
-
                 @if($shop->payments->isEmpty())
                 <div class="p-12 text-center">
                     <i class="fas fa-receipt text-slate-300 text-4xl mb-3"></i>
@@ -172,9 +148,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            @php $running = 0; @endphp
                             @foreach($shop->payments->sortBy('payment_date') as $payment)
-                            @php $running += $payment->amount; @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3 text-slate-600 whitespace-nowrap">{{ $payment->payment_date->format('d M Y') }}</td>
                                 <td class="px-5 py-3">
@@ -215,6 +189,146 @@
                 </div>
                 @endif
             </div>
-        </div>
+
+            <!-- Documents & Files -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-paperclip text-purple-500"></i> Documents & Files
+                    </h3>
+                    <span class="text-sm text-slate-500">{{ $shop->documents->count() }} file(s)</span>
+                </div>
+
+                @can('manage shops')
+                <div class="p-5 border-b border-slate-100 bg-slate-50">
+                    <form method="POST" action="{{ route('shops.documents.store', $shop) }}" enctype="multipart/form-data">
+                        @csrf
+                        <p class="text-xs font-medium text-slate-600 mb-2">Upload receipts, agreements, or images</p>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <label class="flex-1 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-slate-300 hover:border-purple-400 rounded-xl px-4 py-4 cursor-pointer transition-colors bg-white">
+                                <i class="fas fa-cloud-upload-alt text-slate-400 text-2xl"></i>
+                                <span class="text-xs text-slate-500 text-center">Click to choose files or drag & drop</span>
+                                <span class="text-xs text-slate-400">JPG, PNG, PDF, DOC up to 10MB each</span>
+                                <input type="file" name="documents[]" multiple
+                                       accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
+                                       class="hidden" onchange="updateFileLabel(this)">
+                                <span id="file-label" class="text-xs text-purple-600 font-medium hidden mt-1"></span>
+                            </label>
+                            <button type="submit"
+                                    class="sm:w-32 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 shrink-0 transition-colors">
+                                <i class="fas fa-upload"></i> Upload
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                @endcan
+
+                @if($shop->documents->isEmpty())
+                <div class="p-12 text-center">
+                    <i class="fas fa-folder-open text-slate-200 text-6xl mb-3"></i>
+                    <p class="text-slate-400 text-sm font-medium">No files uploaded yet</p>
+                    <p class="text-slate-300 text-xs mt-1">Upload receipts, contracts or photos above</p>
+                </div>
+                @else
+                <div class="p-5">
+                    @php
+                        $images = $shop->documents->where('type','image');
+                        $pdfs   = $shop->documents->where('type','!=','image');
+                    @endphp
+
+                    {{-- Image Grid --}}
+                    @if($images->isNotEmpty())
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                        <i class="fas fa-images mr-1"></i> Images ({{ $images->count() }})
+                    </p>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-5">
+                        @foreach($images as $img)
+                        <div class="group relative rounded-xl overflow-hidden border border-slate-200 aspect-square bg-slate-100">
+                            <a href="{{ Storage::url($img->path) }}" target="_blank">
+                                <img src="{{ Storage::url($img->path) }}" alt="{{ $img->name }}"
+                                     class="w-full h-full object-cover transition-transform group-hover:scale-105">
+                                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                                    <i class="fas fa-search-plus text-white text-xl opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                </div>
+                            </a>
+                            @can('manage shops')
+                            <form method="POST" action="{{ route('shops.documents.destroy', $img) }}"
+                                  onsubmit="return confirm('Delete this image?')"
+                                  class="absolute top-1.5 right-1.5 z-10">
+                                @csrf @method('DELETE')
+                                <button type="submit"
+                                        class="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+                            @endcan
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5 translate-y-full group-hover:translate-y-0 transition-transform">
+                                <p class="text-white text-xs truncate">{{ $img->name }}</p>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+
+                    {{-- Document List --}}
+                    @if($pdfs->isNotEmpty())
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                        <i class="fas fa-file-alt mr-1"></i> Documents ({{ $pdfs->count() }})
+                    </p>
+                    <div class="space-y-2">
+                        @foreach($pdfs as $doc)
+                        @php
+                            $ext = strtolower(pathinfo($doc->name, PATHINFO_EXTENSION));
+                            $iconClass = match($ext) {
+                                'pdf'         => 'fa-file-pdf text-red-500',
+                                'doc','docx'  => 'fa-file-word text-blue-500',
+                                default       => 'fa-file-alt text-slate-400',
+                            };
+                        @endphp
+                        <div class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors group">
+                            <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                <i class="fas {{ $iconClass }} text-lg"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-slate-800 truncate">{{ $doc->name }}</p>
+                                <p class="text-xs text-slate-400 uppercase">{{ $ext }} file</p>
+                            </div>
+                            <a href="{{ Storage::url($doc->path) }}" target="_blank" download
+                               class="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                            @can('manage shops')
+                            <form method="POST" action="{{ route('shops.documents.destroy', $doc) }}"
+                                  onsubmit="return confirm('Delete this document?')">
+                                @csrf @method('DELETE')
+                                <button type="submit"
+                                        class="text-slate-300 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </form>
+                            @endcan
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+                </div>
+                @endif
+            </div>
+
+        </div>{{-- end right col --}}
     </div>
+
+    <script>
+    function updateFileLabel(input) {
+        const label = document.getElementById('file-label');
+        if (input.files.length > 0) {
+            label.textContent = input.files.length === 1
+                ? input.files[0].name
+                : input.files.length + ' files selected';
+            label.classList.remove('hidden');
+        } else {
+            label.classList.add('hidden');
+        }
+    }
+    </script>
 </x-app-layout>

@@ -3,21 +3,26 @@ namespace App\Http\Controllers;
 
 use App\Models\RentEntry;
 use App\Models\Shop;
-use App\Models\User;
+use App\Models\Customer;
+use App\Models\Market;
 use Illuminate\Http\Request;
 
 class RentController extends Controller
 {
     public function index()
     {
-        $query = RentEntry::with(['shop.market', 'owner']);
+        $query = RentEntry::with(['shop.market', 'customer']);
         if (request('search')) {
             $query->where('shop_number', 'like', '%' . request('search') . '%');
         }
-        $entries = $query->latest()->paginate(20);
-        $shops   = Shop::with('market')->orderBy('shop_number')->get();
-        $owners  = User::orderBy('name')->get(); // login users only
-        return view('rent.index', compact('entries', 'shops', 'owners'));
+        if (request('market_id')) {
+            $query->whereHas('shop', fn($q) => $q->where('market_id', request('market_id')));
+        }
+        $entries   = $query->latest()->paginate(20);
+        $markets   = Market::orderBy('name')->get();
+        $shops     = Shop::with('market')->where('type', 'rent')->orderBy('shop_number')->get();
+        $customers = Customer::orderBy('name')->get(['id','name','phone','cnic']);
+        return view('rent.index', compact('entries', 'shops', 'markets', 'customers'));
     }
 
     public function store(Request $request)
@@ -27,7 +32,7 @@ class RentController extends Controller
             'shop_number' => 'required|string|max:255',
             'rent'        => 'required|numeric|min:0',
             'date'        => 'required|date',
-            'owner_id'    => 'nullable|exists:users,id',
+            'customer_id' => 'nullable|exists:customers,id',
             'received_by' => 'nullable|string|max:255',
             'amount_paid' => 'nullable|numeric|min:0',
             'notes'       => 'nullable|string',
