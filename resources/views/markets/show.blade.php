@@ -165,7 +165,7 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Owner</label>
                     <select name="owner_id" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">— Select Owner —</option>
-                        @foreach(\App\Models\User::orderBy('name')->get() as $user)
+                        @foreach(\App\Models\Owner::orderBy('name')->get() as $user)
                         <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
                         @endforeach
                     </select>
@@ -215,7 +215,7 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Owner</label>
                     <select name="owner_id" id="edit-shop-owner" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">— Select Owner —</option>
-                        @foreach(\App\Models\User::orderBy('name')->get() as $user)
+                        @foreach(\App\Models\Owner::orderBy('name')->get() as $user)
                         <option value="{{ $user->id }}">{{ $user->name }}</option>
                         @endforeach
                     </select>

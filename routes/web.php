@@ -10,6 +10,7 @@ use App\Http\Controllers\OwnerLedgerController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\OwnerManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -70,6 +71,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/customers/{customer}',                 [CustomerController::class, 'update'])->name('customers.update')->middleware('can:manage customers');
     Route::delete('/customers/{customer}',              [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('can:manage customers');
     Route::delete('/customer-documents/{document}',     [CustomerController::class, 'deleteDocument'])->name('customers.documents.destroy')->middleware('can:manage customers');
+
+    // Owner Management (standalone owners, separate from users)
+    Route::get('/owner-management',          [OwnerManagementController::class, 'index'])->name('owner-management.index')->middleware('can:view owners');
+    Route::post('/owner-management',         [OwnerManagementController::class, 'store'])->name('owner-management.store')->middleware('can:manage owners');
+    Route::put('/owner-management/{owner}',  [OwnerManagementController::class, 'update'])->name('owner-management.update')->middleware('can:manage owners');
+    Route::delete('/owner-management/{owner}',[OwnerManagementController::class, 'destroy'])->name('owner-management.destroy')->middleware('can:manage owners');
+
+    // JSON search endpoints for select inputs
+    Route::get('/search/owners',    [OwnerManagementController::class, 'search'])->name('search.owners');
+    Route::get('/search/customers', [OwnerManagementController::class, 'searchCustomers'])->name('search.customers');
 
     // User Management
     Route::get('/users',                   [UserManagementController::class, 'index'])->name('users.index')->middleware('can:manage users');

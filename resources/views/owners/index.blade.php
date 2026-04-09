@@ -3,46 +3,51 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-        <!-- Left: Owner Selector -->
+        <!-- Left: Owner Selector + Add Entry -->
         <div class="space-y-4">
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
                 <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
                     <i class="fas fa-user-tie text-purple-500"></i> Select Owner
                 </h3>
-                <form method="GET">
-                    <select name="owner_id" onchange="this.form.submit()" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">— Choose Owner —</option>
-                        @foreach($owners as $owner)
-                        <option value="{{ $owner->id }}" {{ request('owner_id') == $owner->id ? 'selected' : '' }}>{{ $owner->name }}</option>
-                        @endforeach
-                    </select>
+                <form method="GET" id="owner-ledger-form">
+                    <div class="relative">
+                        <input type="text" id="ledger-owner-search" autocomplete="off"
+                               placeholder="Search owner name or phone..."
+                               value="{{ $selectedOwner ? $selectedOwner->name.($selectedOwner->phone?' — '.$selectedOwner->phone:'') : '' }}"
+                               class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               oninput="ledgerOwnerSearch(this)"
+                               onfocus="ledgerOwnerSearch(this)">
+                        <input type="hidden" name="owner_id" id="ledger-owner-id" value="{{ request('owner_id') }}">
+                        <div id="ledger-owner-dd" class="hidden absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-56 overflow-y-auto"></div>
+                    </div>
                 </form>
             </div>
 
             @if($selectedOwner)
-            <!-- Owner Summary -->
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white text-lg font-bold">
-                        {{ substr($selectedOwner->name, 0, 1) }}
+                        {{ strtoupper(substr($selectedOwner->name, 0, 1)) }}
                     </div>
                     <div>
                         <p class="font-semibold text-slate-800">{{ $selectedOwner->name }}</p>
-                        <p class="text-xs text-slate-400">{{ $selectedOwner->email }}</p>
+                        @if($selectedOwner->phone)
+                        <p class="text-xs text-slate-400">{{ $selectedOwner->phone }}</p>
+                        @endif
+                        @if($selectedOwner->cnic)
+                        <p class="text-xs text-slate-300 font-mono">{{ $selectedOwner->cnic }}</p>
+                        @endif
                     </div>
                 </div>
-                <div class="space-y-2">
-                    <div class="flex justify-between p-3 rounded-xl {{ $balance >= 0 ? 'bg-green-50' : 'bg-red-50' }}">
-                        <span class="text-sm font-medium {{ $balance >= 0 ? 'text-green-700' : 'text-red-700' }}">Net Balance</span>
-                        <span class="text-sm font-bold {{ $balance >= 0 ? 'text-green-700' : 'text-red-700' }}">
-                            Rs {{ number_format(abs($balance), 0) }}
-                            {{ $balance >= 0 ? '(CR)' : '(DR)' }}
-                        </span>
-                    </div>
+                <div class="flex justify-between p-3 rounded-xl {{ $balance >= 0 ? 'bg-green-50' : 'bg-red-50' }}">
+                    <span class="text-sm font-medium {{ $balance >= 0 ? 'text-green-700' : 'text-red-700' }}">Net Balance</span>
+                    <span class="text-sm font-bold {{ $balance >= 0 ? 'text-green-700' : 'text-red-700' }}">
+                        Rs {{ number_format(abs($balance), 0) }}
+                        {{ $balance >= 0 ? '(CR)' : '(DR)' }}
+                    </span>
                 </div>
             </div>
 
-            <!-- Add Ledger Entry -->
             @can('manage owners')
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
                 <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
@@ -106,7 +111,7 @@
             @if(!$selectedOwner)
             <div class="bg-white rounded-2xl border border-slate-200 p-16 text-center">
                 <i class="fas fa-user-tie text-slate-300 text-5xl mb-3"></i>
-                <p class="text-slate-400">Select an owner from the left to view their ledger</p>
+                <p class="text-slate-400">Search and select an owner from the left to view their ledger</p>
             </div>
             @elseif($ledgers->isEmpty())
             <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center">
@@ -145,11 +150,11 @@
                                     {{ $entry->market->name ?? '' }}
                                     @if($entry->shop) · Shop #{{ $entry->shop->shop_number }} @endif
                                 </td>
-                                <td class="px-5 py-3 text-right font-semibold {{ $entry->transaction_type === 'debit' ? 'text-red-600' : 'text-slate-300' }}">
-                                    {{ $entry->transaction_type === 'debit' ? 'Rs ' . number_format($entry->amount, 0) : '—' }}
+                                <td class="px-5 py-3 text-right font-semibold {{ $entry->transaction_type==='debit' ? 'text-red-600' : 'text-slate-300' }}">
+                                    {{ $entry->transaction_type==='debit' ? 'Rs '.number_format($entry->amount,0) : '—' }}
                                 </td>
-                                <td class="px-5 py-3 text-right font-semibold {{ $entry->transaction_type === 'credit' ? 'text-green-600' : 'text-slate-300' }}">
-                                    {{ $entry->transaction_type === 'credit' ? 'Rs ' . number_format($entry->amount, 0) : '—' }}
+                                <td class="px-5 py-3 text-right font-semibold {{ $entry->transaction_type==='credit' ? 'text-green-600' : 'text-slate-300' }}">
+                                    {{ $entry->transaction_type==='credit' ? 'Rs '.number_format($entry->amount,0) : '—' }}
                                 </td>
                                 <td class="px-5 py-3 text-right">
                                     @can('manage owners')
@@ -180,4 +185,44 @@
             @endif
         </div>
     </div>
+
+    <script>
+   const ledgerOwners = <?php echo json_encode($owners->map(fn($o)=>['id'=>$o->id,'name'=>$o->name,'phone'=>$o->phone??'','cnic'=>$o->cnic??''])->values()); ?>;
+
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"\\'"); }
+
+    function ledgerOwnerSearch(input){
+        const q  = input.value.trim().toLowerCase();
+        const dd = document.getElementById('ledger-owner-dd');
+        const filtered = q.length===0 ? ledgerOwners.slice(0,25)
+            : ledgerOwners.filter(r=>r.name.toLowerCase().includes(q)||r.phone.includes(q)||r.cnic.includes(q));
+        if(!filtered.length){
+            dd.innerHTML='<div class="px-4 py-3 text-sm text-slate-400">No results</div>';
+        } else {
+            dd.innerHTML = filtered.map(r=>`
+                <div class="flex items-center justify-between px-4 py-2.5 hover:bg-indigo-50 cursor-pointer border-b border-slate-50 last:border-0"
+                     onmousedown="pickLedgerOwner(${r.id},'${esc(r.name)}','${esc(r.phone)}')">
+                    <div>
+                        <p class="font-medium text-slate-800 text-sm">${r.name}</p>
+                        ${r.cnic?`<p class="text-xs text-slate-400 font-mono">${r.cnic}</p>`:''}
+                    </div>
+                    ${r.phone?`<span class="text-xs text-indigo-600 font-medium">${r.phone}</span>`:''}
+                </div>`).join('');
+        }
+        dd.classList.remove('hidden');
+    }
+
+    function pickLedgerOwner(id, name, phone){
+        document.getElementById('ledger-owner-id').value   = id;
+        document.getElementById('ledger-owner-search').value = name + (phone?' — '+phone:'');
+        document.getElementById('ledger-owner-dd').classList.add('hidden');
+        document.getElementById('owner-ledger-form').submit();
+    }
+
+    document.addEventListener('click', e=>{
+        const dd = document.getElementById('ledger-owner-dd');
+        const inp = document.getElementById('ledger-owner-search');
+        if(!inp.contains(e.target) && !dd.contains(e.target)) dd.classList.add('hidden');
+    });
+    </script>
 </x-app-layout>

@@ -1,8 +1,10 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
@@ -55,9 +57,10 @@ class UserManagementController extends Controller
 
     public function destroy(User $user)
     {
-        if ($user->id === auth()->id()) {
+        if (Auth::check() && $user->id === Auth::id()) {
             return redirect()->route('users.index')->with('error', 'Cannot delete your own account.');
         }
+
         $user->delete();
         return redirect()->route('users.index')->with('success', 'User deleted.');
     }

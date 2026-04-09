@@ -13,7 +13,7 @@ class ShopController extends Controller
     {
         $data = $request->validate([
             'shop_number'     => 'required|string|max:255',
-            'owner_id'        => 'nullable|exists:users,id',
+            'owner_id'        => 'nullable|exists:owners,id',
             'type'            => 'required|in:instalment,rent,sell,purchase',
             'date_of_payment' => 'nullable|date',
             'total_amount'    => 'nullable|numeric|min:0',
@@ -37,7 +37,7 @@ class ShopController extends Controller
     {
         $data = $request->validate([
             'shop_number'     => 'required|string|max:255',
-            'owner_id'        => 'nullable|exists:users,id',
+            'owner_id'        => 'nullable|exists:owners,id',
             'type'            => 'nullable|in:instalment,rent,sell,purchase',
             'date_of_payment' => 'nullable|date',
             'total_amount'    => 'nullable|numeric|min:0',

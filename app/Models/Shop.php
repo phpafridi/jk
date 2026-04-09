@@ -18,7 +18,7 @@ class Shop extends Model
     ];
 
     public function market()    { return $this->belongsTo(Market::class); }
-    public function owner()     { return $this->belongsTo(User::class, 'owner_id'); }
+    public function owner()     { return $this->belongsTo(Owner::class, 'owner_id'); }
     public function payments()  { return $this->hasMany(ShopPayment::class); }
     public function documents() { return $this->hasMany(ShopDocument::class); }
     public function rentEntries(){ return $this->hasMany(RentEntry::class); }

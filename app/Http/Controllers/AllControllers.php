@@ -7,6 +7,7 @@ use App\Models\SellPurchaseEntry;
 use App\Models\ConstructionItem;
 use App\Models\OwnerLedger;
 use App\Models\Customer;
+use App\Models\Owner;
 use App\Models\CustomerDocument;
 use App\Models\EntryDocument;
 use App\Models\User;
@@ -26,7 +27,7 @@ class RentController extends Controller
         }
         $entries = $query->latest()->paginate(15);
         $shops   = Shop::with('market')->where('type','rent')->get();
-        $owners  = User::role(['admin','viewer'])->get();
+        $owners  = Owner::orderBy('name')->get();
         return view('rent.index', compact('entries', 'shops', 'owners'));
     }
 
@@ -38,7 +39,7 @@ class RentController extends Controller
             'shop_number' => 'required|string',
             'rent'        => 'required|numeric|min:0',
             'date'        => 'required|date',
-            'owner_id'    => 'nullable|exists:users,id',
+            'owner_id'    => 'nullable|exists:owners,id',
             'received_by' => 'nullable|string',
             'amount_paid' => 'nullable|numeric|min:0',
             'notes'       => 'nullable|string',
@@ -72,7 +73,9 @@ class SellPurchaseController extends Controller
         }
         $entries = $query->latest()->paginate(15);
         $markets = Market::all();
-        return view('sell.index', compact('entries', 'markets'));
+        $customers = Customer::orderBy('name')->get(['id','name','phone','cnic']);
+        $owners    = Owner::orderBy('name')->get(['id','name','phone','cnic']);
+        return view('sell.index', compact('entries', 'markets', 'customers', 'owners'));
     }
 
     public function store(Request $request)
@@ -98,6 +101,10 @@ class SellPurchaseController extends Controller
             'car_year'         => 'nullable|string',
             'car_registration' => 'nullable|string',
             'notes'            => 'nullable|string',
+            'seller_customer_id' => 'nullable|exists:customers,id',
+            'buyer_customer_id'  => 'nullable|exists:customers,id',
+            'seller_owner_id'    => 'nullable|exists:owners,id',
+            'buyer_owner_id'     => 'nullable|exists:owners,id',
         ]);
 
         $entry = SellPurchaseEntry::create($data);
@@ -171,13 +178,13 @@ class OwnerLedgerController extends Controller
 {
     public function index(Request $request)
     {
-        $owners = User::role('admin')->orWhereHas('shops')->with('shops.market')->get();
+        $owners = Owner::orderBy('name')->get();
         $selectedOwner = null;
         $ledgers = collect();
         $balance = 0;
 
         if ($request->owner_id) {
-            $selectedOwner = User::findOrFail($request->owner_id);
+            $selectedOwner = Owner::findOrFail($request->owner_id);
             $ledgers = OwnerLedger::with(['market','shop'])
                 ->where('owner_id', $request->owner_id)
                 ->latest('date')
@@ -196,7 +203,7 @@ class OwnerLedgerController extends Controller
     {
         $this->authorize('manage owners');
         $data = $request->validate([
-            'owner_id'         => 'required|exists:users,id',
+            'owner_id'         => 'required|exists:owners,id',
             'market_id'        => 'nullable|exists:markets,id',
             'shop_id'          => 'nullable|exists:shops,id',
             'transaction_type' => 'required|in:debit,credit',
@@ -326,7 +333,7 @@ class DashboardController extends Controller
             'markets'       => \App\Models\Market::count(),
             'shops'         => \App\Models\Shop::count(),
             'customers'     => \App\Models\Customer::count(),
-            'owners'        => User::role('admin')->count(),
+            'owners'        => \App\Models\Owner::count(),
             'total_income'  => \App\Models\ShopPayment::sum('amount'),
             'pending'       => \App\Models\Shop::selectRaw('SUM(total_amount - paid_amount) as pending')->value('pending') ?? 0,
             'rent_this_month' => \App\Models\RentEntry::whereMonth('date', now()->month)->sum('amount_paid'),

@@ -20,7 +20,7 @@ class RentEntry extends Model {
     protected $fillable = ['shop_id','shop_number','rent','date','owner_id','received_by','amount_paid','notes'];
     protected $casts = ['date' => 'date', 'rent' => 'decimal:2', 'amount_paid' => 'decimal:2'];
     public function shop() { return $this->belongsTo(Shop::class); }
-    public function owner() { return $this->belongsTo(User::class, 'owner_id'); }
+    public function owner() { return $this->belongsTo(Owner::class, 'owner_id'); }
 }
 
 // SellPurchaseEntry.php
@@ -29,11 +29,16 @@ class SellPurchaseEntry extends Model {
         'entry_type','transaction_type','market_id','date','shop_or_item_number',
         'per_sqft_rate','sqft','total','seller_name','seller_cnic','seller_phone',
         'buyer_name','buyer_cnic','buyer_phone','car_make','car_model','car_year',
-        'car_registration','notes'
+        'car_registration','notes',
+        'seller_customer_id','buyer_customer_id','seller_owner_id','buyer_owner_id',
     ];
     protected $casts = ['date' => 'date', 'per_sqft_rate' => 'decimal:2', 'sqft' => 'decimal:2', 'total' => 'decimal:2'];
-    public function market() { return $this->belongsTo(Market::class); }
-    public function documents() { return $this->morphMany(EntryDocument::class, 'documentable'); }
+    public function market()         { return $this->belongsTo(Market::class); }
+    public function documents()      { return $this->morphMany(EntryDocument::class, 'documentable'); }
+    public function sellerCustomer() { return $this->belongsTo(Customer::class, 'seller_customer_id'); }
+    public function buyerCustomer()  { return $this->belongsTo(Customer::class, 'buyer_customer_id'); }
+    public function sellerOwner()    { return $this->belongsTo(Owner::class, 'seller_owner_id'); }
+    public function buyerOwner()     { return $this->belongsTo(Owner::class, 'buyer_owner_id'); }
 }
 
 // ConstructionItem.php
@@ -47,7 +52,7 @@ class ConstructionItem extends Model {
 class OwnerLedger extends Model {
     protected $fillable = ['owner_id','market_id','shop_id','transaction_type','amount','date','description','reference'];
     protected $casts = ['date' => 'date', 'amount' => 'decimal:2'];
-    public function owner() { return $this->belongsTo(User::class, 'owner_id'); }
+    public function owner() { return $this->belongsTo(Owner::class, 'owner_id'); }
     public function market() { return $this->belongsTo(Market::class); }
     public function shop() { return $this->belongsTo(Shop::class); }
 }

@@ -92,8 +92,11 @@
             <a href="{{ route('construction.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('construction.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
                 <i class="fas fa-hard-hat w-5 text-center"></i> Construction
             </a>
-            <a href="{{ route('owners.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('owners.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
-                <i class="fas fa-user-tie w-5 text-center"></i> Owners Details
+            <a href="{{ route('owners.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('owners.index') ? 'active text-indigo-400' : 'hover:text-white' }}">
+                <i class="fas fa-book w-5 text-center"></i> Owners Ledger
+            </a>
+            <a href="{{ route('owner-management.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('owner-management.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
+                <i class="fas fa-user-tie w-5 text-center"></i> Manage Owners
             </a>
 
             <!-- CUSTOMERS Section -->

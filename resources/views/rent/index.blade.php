@@ -3,7 +3,7 @@
 
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <form method="GET" class="flex gap-2 flex-1 max-w-sm">
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search shop number..."
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search shop, owner, notes..."
                    class="flex-1 border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <button type="submit" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm text-slate-600">
                 <i class="fas fa-search"></i>
@@ -51,7 +51,14 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="px-5 py-3 text-slate-600">{{ $entry->owner->name ?? '—' }}</td>
+                        <td class="px-5 py-3">
+                            @if($entry->owner)
+                                <p class="font-medium text-slate-700">{{ $entry->owner->name }}</p>
+                                <p class="text-xs text-slate-400">{{ $entry->owner->phone ?? '' }}</p>
+                            @else
+                                <span class="text-slate-300">—</span>
+                            @endif
+                        </td>
                         <td class="px-5 py-3 text-slate-600 whitespace-nowrap">{{ $entry->date->format('d M Y') }}</td>
                         <td class="px-5 py-3 text-right font-medium text-slate-700">Rs {{ number_format($entry->rent, 0) }}</td>
                         <td class="px-5 py-3 text-right">
@@ -79,7 +86,6 @@
         @endif
     </div>
 
-    <!-- Add Rent Modal -->
     @can('manage rent')
     <div id="modal-add-rent" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 modal-overlay">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -104,41 +110,53 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Shop Number *</label>
-                    <input type="text" name="shop_number" id="rent-shop-number" required class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Will auto-fill">
+                    <input type="text" name="shop_number" id="rent-shop-number" required
+                           class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Auto-filled from shop">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Rent Amount (Rs) *</label>
-                        <input type="number" name="rent" required min="0" step="0.01" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="number" name="rent" required min="0" step="0.01"
+                               class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Amount Paid (Rs)</label>
-                        <input type="number" name="amount_paid" min="0" step="0.01" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="number" name="amount_paid" min="0" step="0.01"
+                               class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
-                    <input type="date" name="date" required value="{{ date('Y-m-d') }}" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="date" name="date" required value="{{ date('Y-m-d') }}"
+                           class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
+
+                {{-- Searchable Owner --}}
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Owner</label>
-                    <select name="owner_id" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">— Select Owner —</option>
-                        @foreach($owners as $owner)
-                        <option value="{{ $owner->id }}">{{ $owner->name }}</option>
-                        @endforeach
-                    </select>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Owner <span class="text-slate-400 font-normal text-xs">(search by name or phone)</span></label>
+                    <div class="relative">
+                        <input type="text" id="rent-owner-search" autocomplete="off" placeholder="Type to search owner..."
+                               class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               oninput="liveSearch(this,'rent-owner-dd','rent-owner-id',rentOwners)"
+                               onfocus="liveSearch(this,'rent-owner-dd','rent-owner-id',rentOwners)">
+                        <input type="hidden" name="owner_id" id="rent-owner-id">
+                        <div id="rent-owner-dd" class="hidden absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto"></div>
+                    </div>
                 </div>
+
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Received By</label>
-                    <input type="text" name="received_by" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Name of collector">
+                    <input type="text" name="received_by"
+                           class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Name of collector">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                    <textarea name="notes" rows="2" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    <textarea name="notes" rows="2"
+                              class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
                 <div class="flex gap-3 pt-2">
-                    <button type="button" onclick="document.getElementById('modal-add-rent').classList.add('hidden')" class="flex-1 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+                    <button type="button" onclick="document.getElementById('modal-add-rent').classList.add('hidden')"
+                            class="flex-1 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
                     <button type="submit" class="flex-1 py-2.5 rounded-xl btn-primary text-white text-sm font-medium">Save Entry</button>
                 </div>
             </form>
@@ -147,9 +165,49 @@
     @endcan
 
     <script>
-    function fillShopNumber(select) {
-        const opt = select.options[select.selectedIndex];
-        document.getElementById('rent-shop-number').value = opt.dataset.number || '';
+    const rentOwners = <?php echo json_encode($owners->map(fn($o)=>['id'=>$o->id,'name'=>$o->name,'phone'=>$o->phone??'','cnic'=>$o->cnic??''])->values()); ?>;
+
+    function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"\\'"); }
+
+    function liveSearch(input, ddId, hiddenId, dataset){
+        const q = input.value.trim().toLowerCase();
+        const dd = document.getElementById(ddId);
+        const filtered = q.length===0 ? dataset.slice(0,25)
+            : dataset.filter(r => r.name.toLowerCase().includes(q) || r.phone.includes(q) || r.cnic.includes(q));
+        if(!filtered.length){
+            dd.innerHTML='<div class="px-4 py-3 text-sm text-slate-400">No results</div>';
+        } else {
+            dd.innerHTML = filtered.map(r=>`
+                <div class="flex items-center justify-between px-4 py-2.5 hover:bg-indigo-50 cursor-pointer border-b border-slate-50 last:border-0"
+                     onmousedown="pickItem('${ddId}','${hiddenId}','${input.id}',${r.id},'${esc(r.name)}','${esc(r.phone)}')">
+                    <div>
+                        <p class="font-medium text-slate-800 text-sm">${r.name}</p>
+                        ${r.cnic?`<p class="text-xs text-slate-400 font-mono">${r.cnic}</p>`:''}
+                    </div>
+                    ${r.phone?`<span class="text-xs text-indigo-600 font-medium">${r.phone}</span>`:''}
+                </div>`).join('');
+        }
+        dd.classList.remove('hidden');
     }
+
+    function pickItem(ddId, hiddenId, inputId, id, name, phone){
+        document.getElementById(hiddenId).value = id;
+        document.getElementById(inputId).value  = name + (phone?' — '+phone:'');
+        document.getElementById(ddId).classList.add('hidden');
+    }
+
+    function fillShopNumber(select){
+        const opt = select.options[select.selectedIndex];
+        document.getElementById('rent-shop-number').value = opt.dataset.number||'';
+    }
+
+    document.addEventListener('click', e=>{
+        document.querySelectorAll('[id$="-dd"]').forEach(dd=>{
+            const inputId = dd.id.replace('-dd','-search');
+            const input   = document.getElementById(inputId);
+            if(input && !input.contains(e.target) && !dd.contains(e.target))
+                dd.classList.add('hidden');
+        });
+    });
     </script>
 </x-app-layout>

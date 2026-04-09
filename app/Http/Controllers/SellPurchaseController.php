@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\SellPurchaseEntry;
 use App\Models\Market;
 use Illuminate\Http\Request;
@@ -22,7 +23,9 @@ class SellPurchaseController extends Controller
         }
         $entries = $query->latest()->paginate(20);
         $markets = Market::orderBy('name')->get();
-        return view('sell.index', compact('entries', 'markets'));
+
+        $customers = Customer::orderBy('name')->get();
+        return view('sell.index', compact('entries', 'markets','customers'));
     }
 
     public function store(Request $request)
@@ -48,6 +51,9 @@ class SellPurchaseController extends Controller
             'car_registration'    => 'nullable|string|max:50',
             'notes'               => 'nullable|string',
         ]);
+
+        dd($data);
+
         SellPurchaseEntry::create($data);
         return redirect()->route('sell.index')->with('success', 'Entry added.');
     }
