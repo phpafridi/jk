@@ -14,4 +14,5 @@ class Owner extends Model
     public function shops()       { return $this->hasMany(Shop::class); }
     public function rentEntries() { return $this->hasMany(RentEntry::class); }
     public function ledgers()     { return $this->hasMany(OwnerLedger::class); }
+    public function documents()   { return $this->hasMany(OwnerDocument::class); }
 }

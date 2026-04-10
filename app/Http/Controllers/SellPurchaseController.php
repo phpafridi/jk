@@ -39,6 +39,12 @@ class SellPurchaseController extends Controller
         return view('sell.show', compact('entry'));
     }
 
+    public function printReceipt(SellPurchaseEntry $entry)
+    {
+        $entry->load(['sellMarket', 'sellerCustomer', 'buyerCustomer', 'sellerOwner', 'buyerOwner']);
+        return view('sell.receipt', compact('entry'));
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

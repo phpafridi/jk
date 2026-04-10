@@ -109,6 +109,16 @@
                 </h3>
                 <form method="POST" action="{{ route('rent.shops.documents.store', $rentShop) }}" enctype="multipart/form-data" class="space-y-3">
                     @csrf
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Document Type</label>
+                        <select name="doc_type" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700">
+                            <option value="cnic">🪪 CNIC</option>
+                            <option value="mou">🤝 MOU</option>
+                            <option value="agreement">📋 Agreement / Contract</option>
+                            <option value="photo">🖼 Photo</option>
+                            <option value="other" selected>📎 Other</option>
+                        </select>
+                    </div>
                     <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-emerald-400 transition-colors">
                         <input type="file" name="documents[]" multiple id="file-upload"
                                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
@@ -156,6 +166,7 @@
                         <thead>
                             <tr class="border-b border-slate-200 bg-slate-50">
                                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Receipt #</th>
                                 <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Rent</th>
                                 <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Paid</th>
                                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Customer</th>
@@ -167,6 +178,11 @@
                             @foreach($rentShop->rentEntries as $entry)
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3 text-slate-600 whitespace-nowrap">{{ $entry->date->format('d M Y') }}</td>
+                                <td class="px-5 py-3">
+                                    <span class="text-xs font-mono bg-sky-50 text-sky-700 px-2 py-0.5 rounded-lg">
+                                        {{ $entry->receipt_number ?? 'RNT-' . str_pad($entry->id, 6, '0', STR_PAD_LEFT) }}
+                                    </span>
+                                </td>
                                 <td class="px-5 py-3 text-right font-semibold text-slate-700">Rs {{ number_format($entry->rent, 0) }}</td>
                                 <td class="px-5 py-3 text-right font-semibold {{ $entry->amount_paid >= $entry->rent ? 'text-emerald-600' : 'text-orange-500' }}">
                                     Rs {{ number_format($entry->amount_paid, 0) }}
@@ -174,14 +190,20 @@
                                 <td class="px-5 py-3 text-slate-600 text-xs">{{ $entry->customer->name ?? '—' }}</td>
                                 <td class="px-5 py-3 text-slate-500 text-xs">{{ $entry->received_by ?? '—' }}</td>
                                 <td class="px-5 py-3 text-right">
-                                    @can('manage rent')
-                                    <form method="POST" action="{{ route('rent.entries.destroy', $entry) }}" onsubmit="return confirm('Delete entry?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
-                                            <i class="fas fa-trash text-xs"></i>
-                                        </button>
-                                    </form>
-                                    @endcan
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <a href="{{ route('rent.entries.receipt', $entry) }}" target="_blank"
+                                           class="text-sky-500 hover:text-sky-700 p-1.5 rounded-lg hover:bg-sky-50 transition-colors" title="Print Receipt">
+                                            <i class="fas fa-print text-xs"></i>
+                                        </a>
+                                        @can('manage rent')
+                                        <form method="POST" action="{{ route('rent.entries.destroy', $entry) }}" onsubmit="return confirm('Delete entry?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                                                <i class="fas fa-trash text-xs"></i>
+                                            </button>
+                                        </form>
+                                        @endcan
+                                    </div>
                                 </td>
                             </tr>
                             @endforeach

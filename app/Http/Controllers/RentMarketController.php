@@ -112,9 +112,16 @@ class RentMarketController extends Controller
             'amount_paid'  => 'nullable|numeric|min:0',
             'notes'        => 'nullable|string',
         ]);
-        $data['rent_shop_id'] = $rentShop->id;
+        $data['rent_shop_id']    = $rentShop->id;
+        $data['receipt_number']  = 'RNT-' . strtoupper(substr(uniqid(), -8));
         RentEntry::create($data);
         return redirect()->route('rent.shops.show', $rentShop)->with('success', 'Rent entry added.');
+    }
+
+    public function printEntryReceipt(RentEntry $rentEntry)
+    {
+        $rentEntry->load(['rentShop.rentMarket', 'customer']);
+        return view('rent.receipt', compact('rentEntry'));
     }
 
     public function destroyEntry(RentEntry $rentEntry)

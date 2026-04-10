@@ -113,15 +113,32 @@
                 @if($files->isNotEmpty())
                 <div class="mb-3">
                     <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Files</p>
+                    @php
+                    $docTypeColors = ['cnic'=>'blue','mou'=>'green','agreement'=>'amber','photo'=>'violet','other'=>'slate'];
+                    $docTypeIcons  = ['cnic'=>'fa-id-card','mou'=>'fa-handshake','agreement'=>'fa-file-contract','photo'=>'fa-image','other'=>'fa-paperclip'];
+                    $docTypeLabels = ['cnic'=>'CNIC','mou'=>'MOU','agreement'=>'Agreement','photo'=>'Photo','other'=>'Other'];
+                    @endphp
                     <div class="space-y-1.5">
                         @foreach($files as $doc)
-                        <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                            <i class="fas fa-file-alt text-slate-400 text-sm flex-shrink-0"></i>
-                            <a href="{{ Storage::url($doc->path) }}" download class="flex-1 text-xs text-slate-600 truncate hover:text-indigo-600">{{ $doc->name }}</a>
+                        @php
+                            $dt    = $doc->doc_type ?? 'other';
+                            $color = $docTypeColors[$dt] ?? 'slate';
+                            $icon  = $docTypeIcons[$dt]  ?? 'fa-paperclip';
+                            $label = $docTypeLabels[$dt]  ?? 'Other';
+                        @endphp
+                        <div class="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl">
+                            <span class="w-6 h-6 rounded-lg bg-{{ $color }}-100 flex items-center justify-center flex-shrink-0">
+                                <i class="fas {{ $icon }} text-{{ $color }}-600 text-xs"></i>
+                            </span>
+                            <div class="flex-1 min-w-0">
+                                <a href="{{ Storage::url($doc->path) }}" target="_blank"
+                                   class="text-xs text-slate-700 hover:text-indigo-600 font-medium truncate block">{{ $doc->name }}</a>
+                                <span class="text-[10px] text-slate-400">{{ $label }}</span>
+                            </div>
                             @can('manage customers')
                             <form method="POST" action="{{ route('customers.documents.destroy', $doc) }}" onsubmit="return confirm('Delete?')">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-red-400 hover:text-red-600 text-xs"><i class="fas fa-times"></i></button>
+                                <button type="submit" class="text-red-400 hover:text-red-600 text-xs w-6 h-6 flex items-center justify-center"><i class="fas fa-times"></i></button>
                             </form>
                             @endcan
                         </div>
@@ -135,18 +152,18 @@
                 @endif
 
                 @can('manage customers')
-                <form method="POST" action="{{ route('customers.update', $customer) }}" enctype="multipart/form-data" class="mt-3 border-t border-slate-100 pt-3">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="name" value="{{ $customer->name }}">
-                    <input type="hidden" name="phone" value="{{ $customer->phone }}">
-                    <input type="hidden" name="cnic" value="{{ $customer->cnic }}">
-                    <input type="hidden" name="address" value="{{ $customer->address }}">
-                    <input type="hidden" name="email" value="{{ $customer->email }}">
-                    <input type="hidden" name="shop_id" value="{{ $customer->shop_id }}">
-                    <input type="hidden" name="notes" value="{{ $customer->notes }}">
-                    <label class="block text-xs font-medium text-slate-700 mb-1">Upload Photos / Files</label>
-                    <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx"
-                           class="w-full text-xs text-slate-600 mb-2 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:text-xs hover:file:bg-indigo-100">
+                <form method="POST" action="{{ route('customers.documents.store', $customer) }}" enctype="multipart/form-data" class="mt-3 border-t border-slate-100 pt-3 space-y-2">
+                    @csrf
+                    <label class="block text-xs font-semibold text-slate-600">Document Type</label>
+                    <select name="doc_type" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+                        <option value="cnic">🪪 CNIC</option>
+                        <option value="mou">🤝 MOU</option>
+                        <option value="agreement">📋 Agreement / Contract</option>
+                        <option value="photo">🖼 Photo</option>
+                        <option value="other" selected>📎 Other</option>
+                    </select>
+                    <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
+                           class="w-full text-xs text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:text-xs hover:file:bg-indigo-100">
                     <button type="submit" class="w-full py-2 border border-indigo-300 text-indigo-600 rounded-xl text-xs font-medium hover:bg-indigo-50 transition-colors">
                         <i class="fas fa-upload mr-1"></i> Upload Files
                     </button>

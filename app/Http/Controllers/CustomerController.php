@@ -91,7 +91,28 @@ class CustomerController extends Controller
     public function deleteDocument(CustomerDocument $document)
     {
         $customer = $document->customer;
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($document->path);
         $document->delete();
         return redirect()->route('customers.show', $customer)->with('success', 'Document deleted.');
+    }
+
+    public function uploadDocument(Request $request, Customer $customer)
+    {
+        $request->validate([
+            'documents.*' => 'required|file|max:20480|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx',
+            'doc_type'    => 'nullable|string|in:cnic,mou,agreement,photo,other',
+        ]);
+        $docType = $request->doc_type ?? 'other';
+        foreach ($request->file('documents', []) as $file) {
+            $path    = $file->store('customer-documents', 'public');
+            $isImage = str_contains($file->getMimeType(), 'image');
+            $customer->documents()->create([
+                'name'     => $file->getClientOriginalName(),
+                'path'     => $path,
+                'type'     => $isImage ? 'image' : 'document',
+                'doc_type' => $docType,
+            ]);
+        }
+        return redirect()->route('customers.show', $customer)->with('success', 'Document(s) uploaded.');
     }
 }

@@ -61,18 +61,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Rent Entries (live inside shop detail page)
     Route::post('/rent-shops/{rentShop}/entries',    [RentMarketController::class, 'storeEntry'])->name('rent.entries.store')->middleware('can:manage rent');
     Route::delete('/rent-entries/{rentEntry}',       [RentMarketController::class, 'destroyEntry'])->name('rent.entries.destroy')->middleware('can:manage rent');
+    Route::get('/rent-entries/{rentEntry}/receipt',  [RentMarketController::class, 'printEntryReceipt'])->name('rent.entries.receipt')->middleware('can:view rent');
 
     // Rent Shop Documents
     Route::post('/rent-shops/{rentShop}/documents',      [RentMarketController::class, 'uploadDocument'])->name('rent.shops.documents.store')->middleware('can:manage rent');
     Route::delete('/rent-shop-documents/{document}',     [RentMarketController::class, 'deleteDocument'])->name('rent.shops.documents.destroy')->middleware('can:manage rent');
 
     // ── Sell / Purchase (with built-in sell market management) ─
-    Route::get('/sell-purchase',            [SellPurchaseController::class, 'index'])->name('sell.index')->middleware('can:view sell purchase');
-    Route::post('/sell-purchase',           [SellPurchaseController::class, 'store'])->name('sell.store')->middleware('can:manage sell purchase');
-    Route::get('/sell-purchase/{entry}',    [SellPurchaseController::class, 'show'])->name('sell.show')->middleware('can:view sell purchase');
-    Route::delete('/sell-purchase/{entry}', [SellPurchaseController::class, 'destroy'])->name('sell.destroy')->middleware('can:manage sell purchase');
-    Route::post('/sell-purchase/{entry}/documents',       [SellPurchaseController::class, 'uploadDocument'])->name('sell.documents.store')->middleware('can:manage sell purchase');
-    Route::delete('/sell-purchase-documents/{document}',  [SellPurchaseController::class, 'deleteDocument'])->name('sell.documents.destroy')->middleware('can:manage sell purchase');
+    Route::get('/sell-purchase',                              [SellPurchaseController::class, 'index'])->name('sell.index')->middleware('can:view sell purchase');
+    Route::post('/sell-purchase',                             [SellPurchaseController::class, 'store'])->name('sell.store')->middleware('can:manage sell purchase');
+    Route::get('/sell-purchase/{entry}',                      [SellPurchaseController::class, 'show'])->name('sell.show')->middleware('can:view sell purchase');
+    Route::get('/sell-purchase/{entry}/receipt',              [SellPurchaseController::class, 'printReceipt'])->name('sell.receipt')->middleware('can:view sell purchase');
+    Route::delete('/sell-purchase/{entry}',                   [SellPurchaseController::class, 'destroy'])->name('sell.destroy')->middleware('can:manage sell purchase');
+    Route::post('/sell-purchase/{entry}/documents',           [SellPurchaseController::class, 'uploadDocument'])->name('sell.documents.store')->middleware('can:manage sell purchase');
+    Route::delete('/sell-purchase-documents/{document}',      [SellPurchaseController::class, 'deleteDocument'])->name('sell.documents.destroy')->middleware('can:manage sell purchase');
 
     // Sell Markets (managed from WITHIN sell/purchase, no separate nav item needed)
     Route::post('/sell-markets',                         [SellMarketController::class, 'storeMarket'])->name('sell.markets.store')->middleware('can:manage sell purchase');
@@ -91,10 +93,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/owner-ledger/{ownerLedger}', [OwnerLedgerController::class, 'destroy'])->name('owners.destroy')->middleware('can:manage owners');
 
     // ── Owner Management (CRUD for owners) ────────────────────
-    Route::get('/owner-management',           [OwnerManagementController::class, 'index'])->name('owner-management.index')->middleware('can:view owners');
-    Route::post('/owner-management',          [OwnerManagementController::class, 'store'])->name('owner-management.store')->middleware('can:manage owners');
-    Route::put('/owner-management/{owner}',   [OwnerManagementController::class, 'update'])->name('owner-management.update')->middleware('can:manage owners');
-    Route::delete('/owner-management/{owner}',[OwnerManagementController::class, 'destroy'])->name('owner-management.destroy')->middleware('can:manage owners');
+    Route::get('/owner-management',                              [OwnerManagementController::class, 'index'])->name('owner-management.index')->middleware('can:view owners');
+    Route::get('/owner-management/{owner}',                      [OwnerManagementController::class, 'show'])->name('owner-management.show')->middleware('can:view owners');
+    Route::post('/owner-management',                             [OwnerManagementController::class, 'store'])->name('owner-management.store')->middleware('can:manage owners');
+    Route::put('/owner-management/{owner}',                      [OwnerManagementController::class, 'update'])->name('owner-management.update')->middleware('can:manage owners');
+    Route::delete('/owner-management/{owner}',                   [OwnerManagementController::class, 'destroy'])->name('owner-management.destroy')->middleware('can:manage owners');
+    Route::post('/owner-management/{owner}/documents',           [OwnerManagementController::class, 'uploadDocument'])->name('owner-management.documents.store')->middleware('can:manage owners');
+    Route::delete('/owner-documents/{document}',                 [OwnerManagementController::class, 'deleteDocument'])->name('owner-management.documents.destroy')->middleware('can:manage owners');
 
     // JSON search endpoints
     Route::get('/search/owners',    [OwnerManagementController::class, 'search'])->name('search.owners');
@@ -106,6 +111,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/customers/{customer}',              [CustomerController::class, 'show'])->name('customers.show')->middleware('can:view customers');
     Route::put('/customers/{customer}',              [CustomerController::class, 'update'])->name('customers.update')->middleware('can:manage customers');
     Route::delete('/customers/{customer}',           [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('can:manage customers');
+    Route::post('/customers/{customer}/documents',   [CustomerController::class, 'uploadDocument'])->name('customers.documents.store')->middleware('can:manage customers');
     Route::delete('/customer-documents/{document}',  [CustomerController::class, 'deleteDocument'])->name('customers.documents.destroy')->middleware('can:manage customers');
 
     // ── User Management ───────────────────────────────────────

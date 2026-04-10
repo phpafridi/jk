@@ -72,20 +72,24 @@
                         </td>
                         <td class="px-5 py-3 text-slate-500 text-xs max-w-xs truncate">{{ $owner->address ?? '—' }}</td>
                         <td class="px-5 py-3 text-right">
-                            @can('manage owners')
                             <div class="flex items-center justify-end gap-2">
+                                <a href="{{ route('owner-management.show', $owner) }}"
+                                   class="text-violet-500 hover:text-violet-700 p-1.5 rounded-lg hover:bg-violet-50 transition-colors" title="View Profile">
+                                    <i class="fas fa-user text-xs"></i>
+                                </a>
+                                @can('manage owners')
                                 <button onclick="openEditOwner({{ $owner->id }}, '{{ addslashes($owner->name) }}', '{{ addslashes($owner->phone ?? '') }}', '{{ addslashes($owner->cnic ?? '') }}', '{{ addslashes($owner->address ?? '') }}', '{{ addslashes($owner->email ?? '') }}', '{{ addslashes($owner->notes ?? '') }}')"
-                                        class="text-indigo-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
+                                        class="text-indigo-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 transition-colors" title="Edit">
                                     <i class="fas fa-edit text-xs"></i>
                                 </button>
                                 <form method="POST" action="{{ route('owner-management.destroy', $owner) }}" onsubmit="return confirm('Delete this owner?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                                    <button type="submit" class="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
                                         <i class="fas fa-trash text-xs"></i>
                                     </button>
                                 </form>
+                                @endcan
                             </div>
-                            @endcan
                         </td>
                     </tr>
                     @endforeach

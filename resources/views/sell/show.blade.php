@@ -43,6 +43,10 @@
                 </p>
             </div>
             <div class="flex gap-2 shrink-0">
+                <a href="{{ route('sell.receipt', $entry) }}" target="_blank"
+                   class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors">
+                    <i class="fas fa-print"></i> Receipt
+                </a>
                 @can('manage sell purchase')
                 <form method="POST" action="{{ route('sell.destroy', $entry) }}" onsubmit="return confirm('Delete this entry?')">
                     @csrf @method('DELETE')
@@ -235,11 +239,18 @@
         @endif
 
         @can('manage sell purchase')
-        <form method="POST" action="{{ route('sell.documents.store', $entry) }}" enctype="multipart/form-data" class="mt-5 pt-5 border-t border-slate-100">
+        <form method="POST" action="{{ route('sell.documents.store', $entry) }}" enctype="multipart/form-data" class="mt-5 pt-5 border-t border-slate-100 space-y-3">
             @csrf
-            <p class="text-xs font-medium text-slate-600 mb-2">Upload More Files</p>
+            <p class="text-xs font-semibold text-slate-600">Upload More Files</p>
+            <select name="doc_type" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+                <option value="cnic">🪪 CNIC</option>
+                <option value="mou">🤝 MOU</option>
+                <option value="agreement">📋 Agreement / Contract</option>
+                <option value="photo">🖼 Photo</option>
+                <option value="other" selected>📎 Other</option>
+            </select>
             <div class="flex flex-col sm:flex-row gap-3">
-                <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
                        class="flex-1 text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100">
                 <button type="submit" class="px-5 py-2 btn-primary text-white rounded-xl text-sm font-medium shrink-0">
                     <i class="fas fa-upload mr-1"></i> Upload
