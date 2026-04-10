@@ -230,18 +230,11 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     @foreach($images as $img)
                     <div class="relative group rounded-xl overflow-hidden bg-slate-100 aspect-square">
-                        <img src="{{ Storage::url($img->path) }}" alt="{{ $img->name }}"
+                        <img src="{{ asset('storage/' . $img->path) }}" alt="{{ $img->name }}"
                              class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
-                             onclick="openLightbox('{{ Storage::url($img->path) }}','{{ addslashes($img->name) }}')">
+                             onclick="openLightbox('{{ asset('storage/' . $img->path) }}','{{ addslashes($img->name) }}')">
                         @can('manage rent')
-                        <form method="POST" action="{{ route('rent.shops.documents.destroy', $img) }}"
-                              onsubmit="return confirm('Delete this photo?')"
-                              class="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm">
-                                <i class="fas fa-times text-xs"></i>
-                            </button>
-                        </form>
+                        <button type="button" onclick="openDeleteModal('{{ route('rent.shops.documents.destroy', $img) }}', '{{ addslashes($img->name) }}')" style="position:absolute;top:4px;right:4px;z-index:20;width:24px;height:24px;background:#ef4444;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.4);color:white"><i class="fas fa-trash"></i></button>
                         @endcan
                         <div class="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <p class="text-white text-xs truncate">{{ $img->name }}</p>
@@ -271,17 +264,12 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <a href="{{ Storage::url($doc->path) }}" target="_blank"
+                            <a href="{{ asset('storage/' . $doc->path) }}" target="_blank"
                                class="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
                                 <i class="fas fa-download text-sm"></i>
                             </a>
                             @can('manage rent')
-                            <form method="POST" action="{{ route('rent.shops.documents.destroy', $doc) }}" onsubmit="return confirm('Delete?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                    <i class="fas fa-trash text-xs"></i>
-                                </button>
-                            </form>
+                            <button type="button" onclick="openDeleteModal('{{ route('rent.shops.documents.destroy', $doc) }}', '{{ addslashes($doc->name) }}')" class="text-red-400 hover:text-red-600 text-xs w-6 h-6 flex items-center justify-center flex-shrink-0"><i class="fas fa-trash"></i></button>
                             @endcan
                         </div>
                     </div>
@@ -359,4 +347,56 @@
         if (inp && !inp.contains(e.target) && !dd.contains(e.target)) dd.classList.add('hidden');
     });
     </script>
+
+    {{-- Delete Confirm Modal --}}
+    <div id="modal-delete-doc" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-trash text-red-500"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-slate-800">Delete File</h3>
+                    <p class="text-xs text-slate-500" id="delete-doc-name"></p>
+                </div>
+            </div>
+            <p class="text-sm text-slate-600 mb-4">Type <span class="font-bold text-red-600">123</span> to confirm deletion. This cannot be undone.</p>
+            <input type="text" id="delete-confirm-input" placeholder="Type 123 here..."
+                   class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-red-400"
+                   oninput="document.getElementById('btn-confirm-delete').disabled = this.value !== '123'">
+            <div class="flex gap-3">
+                <button type="button" onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+                <button type="button" id="btn-confirm-delete" disabled onclick="submitDelete()"
+                        class="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+    <form id="delete-doc-form" method="POST" class="hidden">
+        @csrf @method('DELETE')
+    </form>
+    <script>
+        let deleteActionUrl = '';
+        function openDeleteModal(url, name) {
+            deleteActionUrl = url;
+            document.getElementById('delete-doc-name').textContent = name;
+            document.getElementById('delete-confirm-input').value = '';
+            document.getElementById('btn-confirm-delete').disabled = true;
+            document.getElementById('modal-delete-doc').classList.remove('hidden');
+            setTimeout(() => document.getElementById('delete-confirm-input').focus(), 100);
+        }
+        function closeDeleteModal() {
+            document.getElementById('modal-delete-doc').classList.add('hidden');
+            deleteActionUrl = '';
+        }
+        function submitDelete() {
+            document.getElementById('delete-doc-form').action = deleteActionUrl;
+            document.getElementById('delete-doc-form').submit();
+        }
+        document.getElementById('modal-delete-doc').addEventListener('click', function(e) {
+            if (e.target === this) closeDeleteModal();
+        });
+    </script>
+
 </x-app-layout>

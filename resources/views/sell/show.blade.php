@@ -220,18 +220,13 @@
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs font-medium text-slate-800 truncate">{{ $doc->name }}</p>
-                    <a href="{{ Storage::url($doc->path) }}" target="_blank"
+                    <a href="{{ asset('storage/' . $doc->path) }}" target="_blank"
                        class="text-xs text-indigo-600 hover:underline">
                         {{ $doc->type === 'image' ? 'View Image' : 'Open File' }}
                     </a>
                 </div>
                 @can('manage sell purchase')
-                <form method="POST" action="{{ route('sell.documents.destroy', $doc) }}" onsubmit="return confirm('Delete?')">
-                    @csrf @method('DELETE')
-                    <button class="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors">
-                        <i class="fas fa-times text-xs"></i>
-                    </button>
-                </form>
+                <button type="button" onclick="openDeleteModal('{{ route('sell.documents.destroy', $doc) }}', '{{ addslashes($doc->name) }}')" class="text-red-400 hover:text-red-600 text-xs w-6 h-6 flex items-center justify-center flex-shrink-0"><i class="fas fa-trash"></i></button>
                 @endcan
             </div>
             @endforeach
@@ -259,4 +254,56 @@
         </form>
         @endcan
     </div>
+
+    {{-- Delete Confirm Modal --}}
+    <div id="modal-delete-doc" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-trash text-red-500"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-slate-800">Delete File</h3>
+                    <p class="text-xs text-slate-500" id="delete-doc-name"></p>
+                </div>
+            </div>
+            <p class="text-sm text-slate-600 mb-4">Type <span class="font-bold text-red-600">123</span> to confirm deletion. This cannot be undone.</p>
+            <input type="text" id="delete-confirm-input" placeholder="Type 123 here..."
+                   class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-red-400"
+                   oninput="document.getElementById('btn-confirm-delete').disabled = this.value !== '123'">
+            <div class="flex gap-3">
+                <button type="button" onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+                <button type="button" id="btn-confirm-delete" disabled onclick="submitDelete()"
+                        class="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+    <form id="delete-doc-form" method="POST" class="hidden">
+        @csrf @method('DELETE')
+    </form>
+    <script>
+        let deleteActionUrl = '';
+        function openDeleteModal(url, name) {
+            deleteActionUrl = url;
+            document.getElementById('delete-doc-name').textContent = name;
+            document.getElementById('delete-confirm-input').value = '';
+            document.getElementById('btn-confirm-delete').disabled = true;
+            document.getElementById('modal-delete-doc').classList.remove('hidden');
+            setTimeout(() => document.getElementById('delete-confirm-input').focus(), 100);
+        }
+        function closeDeleteModal() {
+            document.getElementById('modal-delete-doc').classList.add('hidden');
+            deleteActionUrl = '';
+        }
+        function submitDelete() {
+            document.getElementById('delete-doc-form').action = deleteActionUrl;
+            document.getElementById('delete-doc-form').submit();
+        }
+        document.getElementById('modal-delete-doc').addEventListener('click', function(e) {
+            if (e.target === this) closeDeleteModal();
+        });
+    </script>
+
 </x-app-layout>

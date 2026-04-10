@@ -34,7 +34,7 @@
             <!-- Market Image -->
             <div class="h-36 bg-gradient-to-br from-indigo-500 to-purple-600 relative overflow-hidden">
                 @if($market->image)
-                    <img src="{{ Storage::url($market->image) }}" alt="{{ $market->name }}" class="w-full h-full object-cover opacity-80">
+                    <img src="{{ asset('storage/' . $market->image) }}" alt="{{ $market->name }}" class="w-full h-full object-cover opacity-80">
                 @else
                     <div class="absolute inset-0 flex items-center justify-center">
                         <i class="fas fa-store text-white/40 text-5xl"></i>
