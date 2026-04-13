@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ConstructionItem;
+use App\Models\ConstructionProject;
 use App\Models\Market;
 use Illuminate\Http\Request;
 
@@ -9,32 +10,33 @@ class ConstructionController extends Controller
 {
     public function index()
     {
-        // Group items by project_name to show project cards
-        $query = ConstructionItem::with('market');
+        $query = ConstructionProject::with('market');
+
         if (request('market_id')) {
             $query->where('market_id', request('market_id'));
         }
         if (request('search')) {
             $s = request('search');
-            $query->where(fn($q) => $q
-                ->where('project_name', 'like', "%$s%")
-                ->orWhere('item_name',   'like', "%$s%"));
+            $query->where('name', 'like', "%$s%");
         }
 
-        // Build project summary cards
-        $projects = $query->get()
-            ->groupBy('project_name')
-            ->map(function($items, $name) {
-                return [
-                    'project_name' => $name,
-                    'market'       => $items->first()->market,
-                    'total'        => $items->sum('total'),
-                    'items_count'  => $items->count(),
-                    'last_date'    => $items->max('date'),
-                    'market_id'    => $items->first()->market_id,
-                ];
-            })
-            ->values();
+        $projectModels = $query->latest()->get();
+
+        // Attach totals from construction_items
+        $projects = $projectModels->map(function ($proj) {
+            $items = ConstructionItem::where('project_name', $proj->name)->get();
+            return [
+                'id'           => $proj->id,
+                'project_name' => $proj->name,
+                'market'       => $proj->market,
+                'total'        => $items->sum('total'),
+                'items_count'  => $items->count(),
+                'last_date'    => $items->max('date'),
+                'market_id'    => $proj->market_id,
+                'notes'        => $proj->notes,
+                'created_at'   => $proj->created_at,
+            ];
+        });
 
         $grandTotal = $projects->sum('total');
         $markets    = Market::orderBy('name')->get();
@@ -42,21 +44,45 @@ class ConstructionController extends Controller
         return view('construction.index', compact('projects', 'grandTotal', 'markets'));
     }
 
+    public function storeProject(Request $request)
+    {
+        $request->validate([
+            'name'      => 'required|string|max:255|unique:construction_projects,name',
+            'market_id' => 'nullable|exists:markets,id',
+            'notes'     => 'nullable|string',
+        ]);
+
+        ConstructionProject::create([
+            'name'      => $request->name,
+            'market_id' => $request->market_id,
+            'notes'     => $request->notes,
+        ]);
+
+        return redirect()->route('construction.index')->with('success', 'Project "' . $request->name . '" created.');
+    }
+
+    public function destroyProject(ConstructionProject $project)
+    {
+        // Delete all items under this project too
+        ConstructionItem::where('project_name', $project->name)->delete();
+        $project->delete();
+        return redirect()->route('construction.index')->with('success', 'Project deleted.');
+    }
+
     public function show(string $projectName)
     {
+        $projectName = urldecode($projectName);
+        $project = ConstructionProject::where('name', $projectName)->first();
+
         $query = ConstructionItem::with('market')
             ->where('project_name', $projectName);
 
-        if (request('market_id')) {
-            $query->where('market_id', request('market_id'));
-        }
+        $items   = $query->latest()->paginate(50);
+        $total   = ConstructionItem::where('project_name', $projectName)->sum('total');
+        $market  = $project ? $project->market : optional($items->first())->market;
+        $markets = Market::orderBy('name')->get();
 
-        $items      = $query->latest()->paginate(50);
-        $total      = ConstructionItem::where('project_name', $projectName)->sum('total');
-        $market     = optional($items->first())->market;
-        $markets    = Market::orderBy('name')->get();
-
-        return view('construction.show_project', compact('projectName', 'items', 'total', 'market', 'markets'));
+        return view('construction.show_project', compact('projectName', 'project', 'items', 'total', 'market', 'markets'));
     }
 
     public function store(Request $request)
@@ -73,24 +99,27 @@ class ConstructionController extends Controller
             'date'         => 'required|date',
             'notes'        => 'nullable|string',
         ]);
+
+        // Auto-inherit market_id from project if not provided
+        if (empty($data['market_id'])) {
+            $proj = ConstructionProject::where('name', $data['project_name'])->first();
+            if ($proj && $proj->market_id) {
+                $data['market_id'] = $proj->market_id;
+            }
+        }
+
         ConstructionItem::create($data);
 
-        // Redirect back to project if we came from one
         if ($request->redirect_project) {
-            return redirect()->route('construction.show', urlencode($request->redirect_project))->with('success', 'Item added.');
+            return redirect()->route('construction.show', urlencode($request->redirect_project))->with('success', 'Transaction added.');
         }
-        return redirect()->route('construction.index')->with('success', 'Item added.');
+        return redirect()->route('construction.index')->with('success', 'Transaction added.');
     }
 
     public function destroy(ConstructionItem $item)
     {
         $project = $item->project_name;
         $item->delete();
-        // If items still exist for this project, go back to it
-        $stillHas = ConstructionItem::where('project_name', $project)->exists();
-        if ($stillHas) {
-            return redirect()->route('construction.show', urlencode($project))->with('success', 'Item deleted.');
-        }
-        return redirect()->route('construction.index')->with('success', 'Item deleted.');
+        return redirect()->route('construction.show', urlencode($project))->with('success', 'Item deleted.');
     }
 }

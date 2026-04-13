@@ -133,6 +133,7 @@
             </div>
             <form id="edit-market-form" method="POST" enctype="multipart/form-data" class="p-5 space-y-4">
                 @csrf @method('PUT')
+                <input type="hidden" id="edit-market-base-url" value="{{ route('markets.update', '__ID__') }}">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Market Name *</label>
                     <input type="text" name="name" id="edit-market-name" required class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -163,7 +164,8 @@
         document.getElementById('edit-market-name').value = name;
         document.getElementById('edit-market-location').value = location;
         document.getElementById('edit-market-description').value = description;
-        document.getElementById('edit-market-form').action = '/markets/' + id;
+        var base = document.getElementById('edit-market-base-url').value;
+        document.getElementById('edit-market-form').action = base.replace('__ID__', id);
         document.getElementById('modal-edit-market').classList.remove('hidden');
     }
     </script>

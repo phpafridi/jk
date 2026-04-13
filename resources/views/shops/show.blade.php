@@ -100,11 +100,15 @@
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Method</label>
                         <select name="payment_method" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="cash">Cash</option>
-                            <option value="bank">Bank Transfer</option>
-                            <option value="cheque">Cheque</option>
-                            <option value="online">Online</option>
+                            <option value="cash">💵 Cash</option>
+                            <option value="bank">🏦 Bank Transfer</option>
+                            <option value="cheque">📃 Cheque</option>
+                            <option value="online">📱 Online</option>
                         </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Received By</label>
+                        <input type="text" name="received_by" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Name">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Notes</label>
@@ -206,13 +210,12 @@
                         <p class="text-xs font-medium text-slate-600 mb-2">Upload receipts, agreements, or images</p>
                         <div class="flex flex-col sm:flex-row gap-3">
                             <label class="flex-1 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-slate-300 hover:border-purple-400 rounded-xl px-4 py-4 cursor-pointer transition-colors bg-white">
-                                <i class="fas fa-cloud-upload-alt text-slate-400 text-2xl"></i>
-                                <span class="text-xs text-slate-500 text-center">Click to choose files or drag & drop</span>
+                                <i class="fas fa-cloud-upload-alt text-slate-400 text-2xl" id="upload-icon-shop"></i>
+                                <span class="text-xs text-slate-500 text-center" id="file-label-shop">Click to choose files or drag &amp; drop</span>
                                 <span class="text-xs text-slate-400">JPG, PNG, PDF, DOC up to 10MB each</span>
                                 <input type="file" name="documents[]" multiple
                                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
-                                       class="hidden" onchange="updateFileLabel(this)">
-                                <span id="file-label" class="text-xs text-purple-600 font-medium hidden mt-1"></span>
+                                       class="hidden" onchange="updateFileLabelShop(this)">
                             </label>
                             <button type="submit"
                                     class="sm:w-32 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 shrink-0 transition-colors">
@@ -304,15 +307,22 @@
     </div>
 
     <script>
-    function updateFileLabel(input) {
-        const label = document.getElementById('file-label');
+    function updateFileLabelShop(input) {
+        const label = document.getElementById('file-label-shop');
+        const icon  = document.getElementById('upload-icon-shop');
         if (input.files.length > 0) {
-            label.textContent = input.files.length === 1
-                ? input.files[0].name
-                : input.files.length + ' files selected';
-            label.classList.remove('hidden');
+            const names = Array.from(input.files).map(f => f.name).join(', ');
+            label.textContent = input.files.length === 1 ? input.files[0].name : input.files.length + ' files: ' + names;
+            label.classList.add('text-purple-600', 'font-medium');
+            label.classList.remove('text-slate-500');
+            icon.classList.add('text-purple-500');
+            icon.classList.remove('text-slate-400');
         } else {
-            label.classList.add('hidden');
+            label.textContent = 'Click to choose files or drag & drop';
+            label.classList.remove('text-purple-600', 'font-medium');
+            label.classList.add('text-slate-500');
+            icon.classList.remove('text-purple-500');
+            icon.classList.add('text-slate-400');
         }
     }
     </script>

@@ -23,6 +23,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Calculator
+    Route::get('/calculator', fn() => view('calculator'))->name('calculator');
+
     // Profile
     Route::get('/profile',    [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile',  [ProfileController::class, 'update'])->name('profile.update');
@@ -77,15 +80,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/sell-purchase-documents/{document}',      [SellPurchaseController::class, 'deleteDocument'])->name('sell.documents.destroy')->middleware('can:manage sell purchase');
 
     // Sell Markets (managed from WITHIN sell/purchase, no separate nav item needed)
+    Route::get('/sell-markets',                          [SellMarketController::class, 'index'])->name('sell.markets.index')->middleware('can:view sell purchase');
+    Route::get('/sell-markets/{sellMarket}',             [SellMarketController::class, 'showMarket'])->name('sell.markets.show')->middleware('can:view sell purchase');
     Route::post('/sell-markets',                         [SellMarketController::class, 'storeMarket'])->name('sell.markets.store')->middleware('can:manage sell purchase');
     Route::put('/sell-markets/{sellMarket}',             [SellMarketController::class, 'updateMarket'])->name('sell.markets.update')->middleware('can:manage sell purchase');
     Route::delete('/sell-markets/{sellMarket}',          [SellMarketController::class, 'destroyMarket'])->name('sell.markets.destroy')->middleware('can:manage sell purchase');
 
     // ── Construction (project-based) ──────────────────────────
-    Route::get('/construction',                    [ConstructionController::class, 'index'])->name('construction.index')->middleware('can:view construction');
-    Route::get('/construction/project/{project}',  [ConstructionController::class, 'show'])->name('construction.show')->middleware('can:view construction');
-    Route::post('/construction',                   [ConstructionController::class, 'store'])->name('construction.store')->middleware('can:manage construction');
-    Route::delete('/construction/{item}',          [ConstructionController::class, 'destroy'])->name('construction.destroy')->middleware('can:manage construction');
+    Route::get('/construction',                              [ConstructionController::class, 'index'])->name('construction.index')->middleware('can:view construction');
+    Route::get('/construction/project/{project}',            [ConstructionController::class, 'show'])->name('construction.show')->middleware('can:view construction');
+    Route::post('/construction/projects',                    [ConstructionController::class, 'storeProject'])->name('construction.projects.store')->middleware('can:manage construction');
+    Route::delete('/construction/projects/{project}',        [ConstructionController::class, 'destroyProject'])->name('construction.projects.destroy')->middleware('can:manage construction');
+    Route::post('/construction',                             [ConstructionController::class, 'store'])->name('construction.store')->middleware('can:manage construction');
+    Route::delete('/construction/{item}',                    [ConstructionController::class, 'destroy'])->name('construction.destroy')->middleware('can:manage construction');
 
     // ── Owner Ledger (uses owners table) ──────────────────────
     Route::get('/owners',                        [OwnerLedgerController::class, 'index'])->name('owners.index')->middleware('can:view owners');
@@ -108,6 +115,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // ── Customers ─────────────────────────────────────────────
     Route::get('/customers',                         [CustomerController::class, 'index'])->name('customers.index')->middleware('can:view customers');
     Route::post('/customers',                        [CustomerController::class, 'store'])->name('customers.store')->middleware('can:manage customers');
+    Route::post('/customers/quick-store',            [CustomerController::class, 'quickStore'])->name('customers.quick-store')->middleware('can:manage customers');
     Route::get('/customers/{customer}',              [CustomerController::class, 'show'])->name('customers.show')->middleware('can:view customers');
     Route::put('/customers/{customer}',              [CustomerController::class, 'update'])->name('customers.update')->middleware('can:manage customers');
     Route::delete('/customers/{customer}',           [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('can:manage customers');

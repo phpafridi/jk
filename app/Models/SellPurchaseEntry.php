@@ -6,7 +6,8 @@ class SellPurchaseEntry extends Model
 {
     protected $fillable = [
         'entry_type','transaction_type','sell_market_id','date','shop_or_item_number',
-        'per_sqft_rate','sqft','total','seller_name','seller_cnic','seller_phone',
+        'per_sqft_rate','sqft','total','amount_paid','payment_method','received_by',
+        'seller_name','seller_cnic','seller_phone',
         'buyer_name','buyer_cnic','buyer_phone','car_make','car_model','car_year',
         'car_registration','notes',
         'seller_customer_id','buyer_customer_id',
@@ -17,6 +18,7 @@ class SellPurchaseEntry extends Model
         'per_sqft_rate' => 'decimal:2',
         'sqft'          => 'decimal:2',
         'total'         => 'decimal:2',
+        'amount_paid'   => 'decimal:2',
     ];
 
     public function sellMarket()      { return $this->belongsTo(SellMarket::class, 'sell_market_id'); }

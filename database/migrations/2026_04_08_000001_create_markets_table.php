@@ -21,8 +21,8 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('market_id')->constrained()->cascadeOnDelete();
             $table->string('shop_number');
-            $table->foreignId('owner_id')->nullable()->constrained('owners')->nullOnDelete();
-            $table->string('type')->default('instalment'); // instalment, rent, sell, purchase
+            $table->unsignedBigInteger('owner_id')->nullable(); // no FK yet — owners table created later
+            $table->string('type')->default('instalment');
             $table->date('date_of_payment')->nullable();
             $table->decimal('total_amount', 15, 2)->default(0);
             $table->decimal('paid_amount', 15, 2)->default(0);
@@ -35,7 +35,7 @@ return new class extends Migration {
         Schema::create('shop_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('shop_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete(); // who recorded
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->decimal('amount', 15, 2);
             $table->date('payment_date');
             $table->string('payment_method')->default('cash');
@@ -49,17 +49,40 @@ return new class extends Migration {
             $table->foreignId('shop_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('path');
-            $table->string('type')->default('image'); // image, pdf, doc
+            $table->string('type')->default('image');
+            $table->timestamps();
+        });
+
+        Schema::create('customers', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('phone')->nullable();
+            $table->string('cnic')->nullable();
+            $table->string('address')->nullable();
+            $table->string('email')->nullable();
+            $table->unsignedBigInteger('linked_user_id')->nullable(); // no FK — dropped in later migration
+            $table->unsignedBigInteger('shop_id')->nullable(); // no FK — avoids circular reference
+            $table->text('notes')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('customer_documents', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
+            $table->string('name');
+            $table->string('path');
+            $table->string('type')->default('document');
             $table->timestamps();
         });
 
         Schema::create('rent_entries', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('shop_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('shop_id')->nullable(); // no FK — replaced in later migration
             $table->string('shop_number');
             $table->decimal('rent', 15, 2);
             $table->date('date');
-            $table->foreignId('customer_id')->nullable()->constrained('customers')->nullOnDelete();
+            $table->unsignedBigInteger('customer_id')->nullable(); // no FK — customers created above but keep loose
             $table->string('received_by')->nullable();
             $table->decimal('amount_paid', 15, 2)->default(0);
             $table->text('notes')->nullable();
@@ -68,9 +91,9 @@ return new class extends Migration {
 
         Schema::create('sell_purchase_entries', function (Blueprint $table) {
             $table->id();
-            $table->string('entry_type'); // car, shop, plot
-            $table->string('transaction_type'); // sell, purchase
-            $table->foreignId('market_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('entry_type');
+            $table->string('transaction_type');
+            $table->unsignedBigInteger('market_id')->nullable(); // no FK — replaced in later migration
             $table->date('date');
             $table->string('shop_or_item_number')->nullable();
             $table->decimal('per_sqft_rate', 15, 2)->nullable();
@@ -92,11 +115,11 @@ return new class extends Migration {
 
         Schema::create('construction_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('market_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('market_id')->nullable(); // no FK — market exists but keep loose
             $table->string('project_name');
             $table->string('item_name');
             $table->decimal('quantity', 10, 2);
-            $table->string('unit'); // sqft, meters, kg, pieces etc.
+            $table->string('unit');
             $table->string('measurement')->nullable();
             $table->decimal('unit_price', 15, 2);
             $table->decimal('total', 15, 2);
@@ -107,37 +130,14 @@ return new class extends Migration {
 
         Schema::create('owner_ledgers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('owner_id')->nullable()->constrained('owners')->nullOnDelete();
-            $table->foreignId('market_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('shop_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('transaction_type'); // debit, credit
+            $table->unsignedBigInteger('owner_id')->nullable(); // no FK — owners table created later
+            $table->unsignedBigInteger('market_id')->nullable();
+            $table->unsignedBigInteger('shop_id')->nullable();
+            $table->string('transaction_type');
             $table->decimal('amount', 15, 2);
             $table->date('date');
             $table->text('description')->nullable();
             $table->string('reference')->nullable();
-            $table->timestamps();
-        });
-
-        Schema::create('customers', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('phone')->nullable();
-            $table->string('cnic')->nullable();
-            $table->string('address')->nullable();
-            $table->string('email')->nullable();
-            $table->foreignId('linked_user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('shop_id')->nullable()->constrained()->nullOnDelete();
-            $table->text('notes')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-        Schema::create('customer_documents', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
-            $table->string('name');
-            $table->string('path');
-            $table->string('type')->default('document');
             $table->timestamps();
         });
 
@@ -155,11 +155,11 @@ return new class extends Migration {
     {
         Schema::dropIfExists('entry_documents');
         Schema::dropIfExists('customer_documents');
-        Schema::dropIfExists('customers');
         Schema::dropIfExists('owner_ledgers');
         Schema::dropIfExists('construction_items');
         Schema::dropIfExists('sell_purchase_entries');
         Schema::dropIfExists('rent_entries');
+        Schema::dropIfExists('customers');
         Schema::dropIfExists('shop_documents');
         Schema::dropIfExists('shop_payments');
         Schema::dropIfExists('shops');

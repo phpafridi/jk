@@ -12,15 +12,17 @@ class ShopController extends Controller
     public function store(Request $request, Market $market)
     {
         $data = $request->validate([
-            'shop_number'     => 'required|string|max:255',
-            'customer_id'     => 'nullable|exists:customers,id',
-            'owner_id'        => 'nullable|exists:owners,id',
-            'type'            => 'required|in:instalment,rent,sell,purchase',
-            'date_of_payment' => 'nullable|date',
-            'total_amount'    => 'nullable|numeric|min:0',
-            'paid_amount'     => 'nullable|numeric|min:0',
-            'rent_amount'     => 'nullable|numeric|min:0',
-            'status'          => 'nullable|in:active,inactive,sold,rented',
+            'shop_number'          => 'required|string|max:255',
+            'customer_id'          => 'nullable|exists:customers,id',
+            'owner_id'             => 'nullable|exists:owners,id',
+            'type'                 => 'required|in:instalment,rent,sell,purchase',
+            'date_of_payment'      => 'nullable|date',
+            'instalment_start_date'=> 'nullable|date',
+            'monthly_instalment'   => 'nullable|numeric|min:0',
+            'total_amount'         => 'nullable|numeric|min:0',
+            'paid_amount'          => 'nullable|numeric|min:0',
+            'rent_amount'          => 'nullable|numeric|min:0',
+            'status'               => 'nullable|in:active,inactive,sold,rented',
         ]);
         $market->shops()->create($data);
         return redirect()->route('markets.show', $market)->with('success', 'Shop added.');
@@ -29,22 +31,25 @@ class ShopController extends Controller
     public function show(Shop $shop)
     {
         $shop->load(['payments' => fn($q) => $q->latest(), 'documents', 'owner', 'market', 'customers']);
-        $totalPaid = $shop->payments->sum('amount');
-        $balance   = $shop->total_amount - $totalPaid;
-        return view('shops.show', compact('shop', 'totalPaid', 'balance'));
+        $totalPaid      = $shop->payments->sum('amount');
+        $balance        = $shop->total_amount - $totalPaid;
+        $instalmentStatus = $shop->instalmentStatus();
+        return view('shops.show', compact('shop', 'totalPaid', 'balance', 'instalmentStatus'));
     }
 
     public function update(Request $request, Shop $shop)
     {
         $data = $request->validate([
-            'shop_number'     => 'required|string|max:255',
-            'owner_id'        => 'nullable|exists:owners,id',
-            'type'            => 'nullable|in:instalment,rent,sell,purchase',
-            'date_of_payment' => 'nullable|date',
-            'total_amount'    => 'nullable|numeric|min:0',
-            'paid_amount'     => 'nullable|numeric|min:0',
-            'rent_amount'     => 'nullable|numeric|min:0',
-            'status'          => 'nullable|in:active,inactive,sold,rented',
+            'shop_number'          => 'required|string|max:255',
+            'owner_id'             => 'nullable|exists:owners,id',
+            'type'                 => 'nullable|in:instalment,rent,sell,purchase',
+            'date_of_payment'      => 'nullable|date',
+            'instalment_start_date'=> 'nullable|date',
+            'monthly_instalment'   => 'nullable|numeric|min:0',
+            'total_amount'         => 'nullable|numeric|min:0',
+            'paid_amount'          => 'nullable|numeric|min:0',
+            'rent_amount'          => 'nullable|numeric|min:0',
+            'status'               => 'nullable|in:active,inactive,sold,rented',
         ]);
         $shop->update($data);
         return redirect()->route('markets.show', $shop->market)->with('success', 'Shop updated.');
@@ -63,6 +68,7 @@ class ShopController extends Controller
             'amount'         => 'required|numeric|min:0.01',
             'payment_date'   => 'required|date',
             'payment_method' => 'nullable|string|max:100',
+            'received_by'    => 'nullable|string|max:255',
             'notes'          => 'nullable|string',
             'receipt_number' => 'nullable|string|max:100',
         ]);

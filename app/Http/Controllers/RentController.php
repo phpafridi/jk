@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RentEntry;
+use App\Models\RentMarket;
 use App\Models\Shop;
 use App\Models\Customer;
 use App\Models\Market;
@@ -11,18 +12,70 @@ class RentController extends Controller
 {
     public function index()
     {
-        $query = RentEntry::with(['shop.market', 'customer']);
+        $query = RentEntry::with(['rentShop.rentMarket', 'customer']);
         if (request('search')) {
             $query->where('shop_number', 'like', '%' . request('search') . '%');
         }
         if (request('market_id')) {
-            $query->whereHas('shop', fn($q) => $q->where('market_id', request('market_id')));
+            $query->whereHas('rentShop', fn($q) => $q->where('rent_market_id', request('market_id')));
         }
-        $entries   = $query->latest()->paginate(20);
-        $markets   = Market::orderBy('name')->get();
-        $shops     = Shop::with('market')->where('type', 'rent')->orderBy('shop_number')->get();
-        $customers = Customer::orderBy('name')->get(['id','name','phone','cnic']);
-        return view('rent.index', compact('entries', 'shops', 'markets', 'customers'));
+        $entries = $query->latest()->paginate(20);
+
+        // Market breakdown with pending/paid stats
+        $rentMarkets = RentMarket::withCount('shops')
+            ->with(['shops.rentEntries'])
+            ->get()
+            ->map(function($market) {
+                $pendingShops  = 0;
+                $pendingAmount = 0;
+                $pendingMonths = 0;
+                $paidAmount    = 0;
+                $shopDetails   = [];
+
+                foreach ($market->shops as $shop) {
+                    $shopPending  = 0;
+                    $shopMonths   = 0;
+                    $shopPaid     = 0;
+                    foreach ($shop->rentEntries as $entry) {
+                        $due = $entry->rent - $entry->amount_paid;
+                        if ($due > 0) {
+                            $shopPending  += $due;
+                            $shopMonths++;
+                        }
+                        $shopPaid += $entry->amount_paid;
+                    }
+                    if ($shopPending > 0) {
+                        $pendingShops++;
+                        $shopDetails[] = [
+                            'shop_number'    => $shop->shop_number,
+                            'pending_amount' => $shopPending,
+                            'pending_months' => $shopMonths,
+                            'paid_amount'    => $shopPaid,
+                        ];
+                    }
+                    $pendingAmount += $shopPending;
+                    $pendingMonths += $shopMonths;
+                    $paidAmount    += $shopPaid;
+                }
+
+                return [
+                    'id'             => $market->id,
+                    'name'           => $market->name,
+                    'location'       => $market->location,
+                    'total_shops'    => $market->shops_count,
+                    'pending_shops'  => $pendingShops,
+                    'pending_amount' => $pendingAmount,
+                    'pending_months' => $pendingMonths,
+                    'paid_amount'    => $paidAmount,
+                    'shop_details'   => $shopDetails,
+                ];
+            })
+            ->filter(fn($m) => $m['total_shops'] > 0);
+
+        $rentMarketsAll   = RentMarket::orderBy('name')->get();
+        $customers        = Customer::orderBy('name')->get(['id','name','phone','cnic']);
+
+        return view('rent.index', compact('entries', 'rentMarketsAll', 'rentMarkets', 'customers'));
     }
 
     public function store(Request $request)

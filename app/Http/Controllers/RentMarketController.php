@@ -14,7 +14,36 @@ class RentMarketController extends Controller
     // ── Markets ──────────────────────────────────────────────
     public function index()
     {
-        $markets = RentMarket::withCount('shops')->latest()->paginate(20);
+        $markets = RentMarket::withCount('shops')
+            ->with(['shops' => function($q) {
+                $q->with('rentEntries');
+            }])
+            ->latest()
+            ->paginate(20);
+
+        $markets->getCollection()->transform(function($market) {
+            $pendingShops  = 0;
+            $pendingAmount = 0;
+            $pendingMonths = 0;
+            $paidAmount    = 0;
+
+            foreach ($market->shops as $shop) {
+                $status = $shop->rentStatus();
+                if ($status['months_missed'] > 0 || $status['missed_amount'] > 0) {
+                    $pendingShops++;
+                    $pendingAmount += $status['missed_amount'];
+                    $pendingMonths += $status['months_missed'];
+                }
+                $paidAmount += $status['paid_amount'];
+            }
+
+            $market->pending_shops  = $pendingShops;
+            $market->pending_amount = $pendingAmount;
+            $market->pending_months = $pendingMonths;
+            $market->paid_amount    = $paidAmount;
+            return $market;
+        });
+
         return view('rent.markets.index', compact('markets'));
     }
 
@@ -48,21 +77,38 @@ class RentMarketController extends Controller
 
     public function showMarket(RentMarket $rentMarket)
     {
-        $shops = $rentMarket->shops()->latest()->paginate(20);
-        return view('rent.markets.show', compact('rentMarket', 'shops'));
+        $shops = $rentMarket->shops()
+            ->with('rentEntries')
+            ->latest()
+            ->paginate(20);
+
+        $shops->getCollection()->transform(function($shop) {
+            $status = $shop->rentStatus();
+            $shop->pending_amount = $status['missed_amount'];
+            $shop->pending_months = $status['months_missed'];
+            $shop->paid_amount    = $status['paid_amount'];
+            $shop->months_due     = $status['months_due'];
+            $shop->rent_status    = $status;
+            return $shop;
+        });
+
+        $customers = Customer::orderBy('name')->get(['id','name','phone','cnic']);
+
+        return view('rent.markets.show', compact('rentMarket', 'shops', 'customers'));
     }
 
     // ── Shops ─────────────────────────────────────────────────
     public function storeShop(Request $request, RentMarket $rentMarket)
     {
         $data = $request->validate([
-            'shop_number'   => 'required|string|max:255',
-            'tenant_name'   => 'nullable|string|max:255',
-            'tenant_phone'  => 'nullable|string|max:50',
-            'tenant_cnic'   => 'nullable|string|max:50',
-            'status'        => 'nullable|in:available,rented,inactive',
-            'rent_amount'   => 'nullable|numeric|min:0',
-            'notes'         => 'nullable|string',
+            'shop_number'     => 'required|string|max:255',
+            'tenant_name'     => 'nullable|string|max:255',
+            'tenant_phone'    => 'nullable|string|max:50',
+            'tenant_cnic'     => 'nullable|string|max:50',
+            'status'          => 'nullable|in:available,rented,inactive',
+            'rent_amount'     => 'nullable|numeric|min:0',
+            'rent_start_date' => 'nullable|date',
+            'notes'           => 'nullable|string',
         ]);
         $rentMarket->shops()->create($data);
         return redirect()->route('rent.markets.show', $rentMarket)->with('success', 'Shop added.');
@@ -71,13 +117,14 @@ class RentMarketController extends Controller
     public function updateShop(Request $request, RentShop $rentShop)
     {
         $data = $request->validate([
-            'shop_number'   => 'required|string|max:255',
-            'tenant_name'   => 'nullable|string|max:255',
-            'tenant_phone'  => 'nullable|string|max:50',
-            'tenant_cnic'   => 'nullable|string|max:50',
-            'status'        => 'nullable|in:available,rented,inactive',
-            'rent_amount'   => 'nullable|numeric|min:0',
-            'notes'         => 'nullable|string',
+            'shop_number'     => 'required|string|max:255',
+            'tenant_name'     => 'nullable|string|max:255',
+            'tenant_phone'    => 'nullable|string|max:50',
+            'tenant_cnic'     => 'nullable|string|max:50',
+            'status'          => 'nullable|in:available,rented,inactive',
+            'rent_amount'     => 'nullable|numeric|min:0',
+            'rent_start_date' => 'nullable|date',
+            'notes'           => 'nullable|string',
         ]);
         $rentShop->update($data);
         return redirect()->route('rent.shops.show', $rentShop)->with('success', 'Shop updated.');
@@ -90,30 +137,32 @@ class RentMarketController extends Controller
         return redirect()->route('rent.markets.show', $market)->with('success', 'Shop deleted.');
     }
 
-    // ── Shop Detail (rent entries + documents live here) ─────
+    // ── Shop Detail ─────────────────────────────────────────
     public function showShop(RentShop $rentShop)
     {
         $rentShop->load(['rentMarket', 'rentEntries' => function($q){ $q->latest()->with('customer'); }, 'documents']);
-        $customers = Customer::orderBy('name')->get(['id','name','phone','cnic']);
-        $totalRent   = $rentShop->rentEntries->sum('rent');
-        $totalPaid   = $rentShop->rentEntries->sum('amount_paid');
-        return view('rent.markets.show_shop', compact('rentShop', 'customers', 'totalRent', 'totalPaid'));
+        $customers  = Customer::orderBy('name')->get(['id','name','phone','cnic']);
+        $totalRent  = $rentShop->rentEntries->sum('rent');
+        $totalPaid  = $rentShop->rentEntries->sum('amount_paid');
+        $rentStatus = $rentShop->rentStatus();
+        return view('rent.markets.show_shop', compact('rentShop', 'customers', 'totalRent', 'totalPaid', 'rentStatus'));
     }
 
     // ── Rent Entries ─────────────────────────────────────────
     public function storeEntry(Request $request, RentShop $rentShop)
     {
         $data = $request->validate([
-            'shop_number'  => 'required|string|max:255',
-            'rent'         => 'required|numeric|min:0',
-            'date'         => 'required|date',
-            'customer_id'  => 'nullable|exists:customers,id',
-            'received_by'  => 'nullable|string|max:255',
-            'amount_paid'  => 'nullable|numeric|min:0',
-            'notes'        => 'nullable|string',
+            'shop_number'    => 'required|string|max:255',
+            'rent'           => 'required|numeric|min:0',
+            'date'           => 'required|date',
+            'customer_id'    => 'nullable|exists:customers,id',
+            'received_by'    => 'nullable|string|max:255',
+            'payment_method' => 'nullable|in:cash,bank_transfer,cheque,online,other',
+            'amount_paid'    => 'nullable|numeric|min:0',
+            'notes'          => 'nullable|string',
         ]);
-        $data['rent_shop_id']    = $rentShop->id;
-        $data['receipt_number']  = 'RNT-' . strtoupper(substr(uniqid(), -8));
+        $data['rent_shop_id']   = $rentShop->id;
+        $data['receipt_number'] = 'RNT-' . strtoupper(substr(uniqid(), -8));
         RentEntry::create($data);
         return redirect()->route('rent.shops.show', $rentShop)->with('success', 'Rent entry added.');
     }

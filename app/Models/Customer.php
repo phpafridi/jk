@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Customer extends Model
 {
     use SoftDeletes;
-    protected $fillable = ['name', 'phone', 'cnic', 'address', 'email', 'shop_id', 'notes'];
+    protected $fillable = ['name', 'father_name', 'phone', 'cnic', 'address', 'email', 'shop_id', 'notes'];
 
     public function shop()      { return $this->belongsTo(Shop::class); }
     public function documents() { return $this->hasMany(CustomerDocument::class); }

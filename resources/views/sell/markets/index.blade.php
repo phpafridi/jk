@@ -34,6 +34,20 @@
             <div class="p-4">
                 <h3 class="font-semibold text-slate-800 truncate">{{ $market->name }}</h3>
                 @if($market->location)<p class="text-xs text-slate-500 mt-0.5"><i class="fas fa-map-marker-alt text-amber-400 mr-1"></i>{{ $market->location }}</p>@endif
+                <div class="mt-3 space-y-1.5 text-xs">
+                    <div class="flex justify-between text-slate-500">
+                        <span><i class="fas fa-store text-amber-400 mr-1"></i>{{ $market->shops_count }} shops</span>
+                        @if(isset($market->total_entries))<span>{{ $market->total_entries }} entries</span>@endif
+                    </div>
+                    @if(isset($market->total_value) && $market->total_value > 0)
+                    <div class="flex justify-between">
+                        <span class="text-emerald-600 font-medium">Paid: Rs {{ number_format($market->total_paid, 0) }}</span>
+                        @if($market->total_pending > 0)
+                        <span class="text-amber-600 font-medium">Due: Rs {{ number_format($market->total_pending, 0) }}</span>
+                        @endif
+                    </div>
+                    @endif
+                </div>
                 <div class="flex gap-2 mt-4">
                     <a href="{{ route('sell.markets.show', $market) }}" class="flex-1 text-center py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-sm font-medium transition-colors">
                         <i class="fas fa-eye mr-1"></i> View Shops

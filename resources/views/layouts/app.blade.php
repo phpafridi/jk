@@ -99,6 +99,10 @@
                 <i class="fas fa-user-tie w-5 text-center"></i> Manage Owners
             </a>
 
+            <a href="{{ route('calculator') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('calculator') ? 'active text-indigo-400' : 'hover:text-white' }}">
+                <i class="fas fa-calculator w-5 text-center"></i> Calculator
+            </a>
+
             <!-- CUSTOMERS Section -->
             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2">Customers</p>
 
@@ -151,6 +155,109 @@
 
             <div class="flex items-center gap-3">
                 <span class="hidden sm:block text-sm text-slate-500">{{ now()->format('D, M d Y') }}</span>
+
+                {{-- Bell Notification Icon --}}
+                @php
+                    // Per-market missed instalment notifications
+                    $bellInstMarkets = \App\Models\Market::with('shops')->get()->map(function($m) {
+                        $missed = 0; $amount = 0; $months = 0;
+                        foreach($m->shops as $s) {
+                            $st = $s->instalmentStatus();
+                            if($st['months_missed'] > 0) { $missed++; $amount += $st['missed_amount']; $months += $st['months_missed']; }
+                        }
+                        return ['name'=>$m->name,'id'=>$m->id,'shops'=>$missed,'amount'=>$amount,'months'=>$months];
+                    })->filter(fn($x)=>$x['shops']>0);
+
+                    // Per-market missed rent notifications
+                    $bellRentMarkets = \App\Models\RentMarket::with(['shops.rentEntries'])->get()->map(function($m) {
+                        $missed = 0; $amount = 0; $months = 0;
+                        foreach($m->shops as $s) {
+                            $st = $s->rentStatus();
+                            if($st['months_missed'] > 0) { $missed++; $amount += $st['missed_amount']; $months += $st['months_missed']; }
+                        }
+                        return ['name'=>$m->name,'id'=>$m->id,'shops'=>$missed,'amount'=>$amount,'months'=>$months];
+                    })->filter(fn($x)=>$x['shops']>0);
+
+                    $bellTotal = $bellInstMarkets->count() + $bellRentMarkets->count();
+                @endphp
+                <div class="relative" x-data="{ bellOpen: false }">
+                    <button @click="bellOpen = !bellOpen"
+                            class="relative w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 hover:text-indigo-600 transition-colors">
+                        <i class="fas fa-bell text-base"></i>
+                        @if($bellTotal > 0)
+                        <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center leading-none">
+                            {{ $bellTotal > 99 ? '99+' : $bellTotal }}
+                        </span>
+                        @endif
+                    </button>
+
+                    {{-- Dropdown panel --}}
+                    <div x-show="bellOpen" @click.away="bellOpen=false"
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 scale-95 translate-y-1"
+                         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="absolute right-0 top-11 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
+                         style="display:none;">
+                        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                            <p class="font-semibold text-slate-800 text-sm">Pending Payments</p>
+                            @if($bellTotal > 0)
+                            <span class="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full">{{ $bellTotal }} alert{{ $bellTotal > 1 ? 's' : '' }}</span>
+                            @else
+                            <span class="text-xs text-emerald-600 font-medium">All clear ✓</span>
+                            @endif
+                        </div>
+
+                        <div class="max-h-96 overflow-y-auto divide-y divide-slate-50">
+                            {{-- Per-market instalment missed --}}
+                            @foreach($bellInstMarkets as $bim)
+                            <a href="{{ route('markets.show', $bim['id']) }}" @click="bellOpen=false"
+                               class="flex items-start gap-3 px-4 py-3 hover:bg-indigo-50 transition-colors">
+                                <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-store text-indigo-600 text-xs"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-slate-800 truncate">{{ $bim['name'] }}</p>
+                                    <p class="text-xs text-indigo-600">{{ $bim['shops'] }} shop(s) — {{ $bim['months'] }} instalment month(s) missed</p>
+                                    <p class="text-xs font-semibold text-red-600">Rs {{ number_format($bim['amount'], 0) }} overdue</p>
+                                </div>
+                                <i class="fas fa-chevron-right text-slate-300 text-xs ml-auto mt-1 flex-shrink-0"></i>
+                            </a>
+                            @endforeach
+
+                            {{-- Per-market rent missed --}}
+                            @foreach($bellRentMarkets as $brm)
+                            <a href="{{ route('rent.markets.show', $brm['id']) }}" @click="bellOpen=false"
+                               class="flex items-start gap-3 px-4 py-3 hover:bg-amber-50 transition-colors">
+                                <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-key text-amber-600 text-xs"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-slate-800 truncate">{{ $brm['name'] }}</p>
+                                    <p class="text-xs text-amber-600">{{ $brm['shops'] }} shop(s) — {{ $brm['months'] }} rent month(s) missed</p>
+                                    <p class="text-xs font-semibold text-red-600">Rs {{ number_format($brm['amount'], 0) }} overdue</p>
+                                </div>
+                                <i class="fas fa-chevron-right text-slate-300 text-xs ml-auto mt-1 flex-shrink-0"></i>
+                            </a>
+                            @endforeach
+
+                            @if($bellTotal == 0)
+                            <div class="px-4 py-6 text-center">
+                                <i class="fas fa-check-circle text-emerald-400 text-2xl mb-2"></i>
+                                <p class="text-sm text-emerald-600 font-medium">No pending payments</p>
+                                <p class="text-xs text-slate-400 mt-1">Everything is up to date</p>
+                            </div>
+                            @endif
+                        </div>
+
+                        <div class="px-4 py-2.5 border-t border-slate-100 bg-slate-50">
+                            <a href="{{ route('dashboard') }}" @click="bellOpen=false" class="text-xs text-indigo-600 hover:underline font-medium">View full dashboard →</a>
+                        </div>
+                    </div>
+                </div>
+
                 <a href="{{ route('profile.edit') }}" class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold hover:shadow-lg transition-shadow">
                     {{ substr(auth()->user()->name, 0, 1) }}
                 </a>

@@ -39,6 +39,9 @@
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Seller</th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Buyer</th>
                         <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                        <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Paid</th>
+                        <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Remaining</th>
+                        <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Method</th>
                         <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Market</th>
                         <th class="text-right px-5 py-3"></th>
                     </tr>
@@ -69,6 +72,13 @@
                             <p class="text-xs text-slate-400">{{ $entry->buyer_phone ?? $entry->buyer_cnic ?? '' }}</p>
                         </td>
                         <td class="px-5 py-3 text-right font-bold text-slate-800">Rs {{ number_format($entry->total, 0) }}</td>
+                        @php $paid = (float)($entry->amount_paid ?? 0); $rem = max(0, (float)$entry->total - $paid); @endphp
+                        <td class="px-5 py-3 text-right font-semibold text-emerald-600">Rs {{ number_format($paid, 0) }}</td>
+                        <td class="px-5 py-3 text-right font-semibold {{ $rem > 0 ? 'text-amber-600' : 'text-slate-300' }}">{{ $rem > 0 ? 'Rs '.number_format($rem,0) : '—' }}</td>
+                        <td class="px-5 py-3 text-slate-500 text-xs">
+                            @php $pm=['cash'=>'💵 Cash','bank_transfer'=>'🏦 Bank','cheque'=>'📃 Cheque','online'=>'📱 Online','other'=>'Other']; @endphp
+                            {{ $pm[$entry->payment_method ?? 'cash'] ?? '💵 Cash' }}
+                        </td>
                         <td class="px-5 py-3 text-slate-500 text-xs">{{ ($entry->sellMarket->name ?? $entry->market->name ?? '—') ?? '—' }}</td>
                         <td class="px-5 py-3 text-right">
                             @can('manage sell purchase')
@@ -177,11 +187,11 @@
                     <div class="grid grid-cols-3 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Per Sqft Rate</label>
-                            <input type="number" name="per_sqft_rate" min="0" step="0.01" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0">
+                            <input type="number" name="per_sqft_rate" id="sell-per-sqft" min="0" step="0.01" oninput="calcSellTotal()" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Sqft Area</label>
-                            <input type="number" name="sqft" min="0" step="0.01" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0">
+                            <input type="number" name="sqft" id="sell-sqft-area" min="0" step="0.01" oninput="calcSellTotal()" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Total (Rs) *</label>
@@ -284,6 +294,33 @@
                     </div>
                 </div>
 
+                {{-- Payment Details --}}
+                <div class="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50">
+                    <p class="text-sm font-semibold text-slate-700"><i class="fas fa-credit-card text-indigo-500 mr-1"></i> Payment Details</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Amount Paid (Rs)</label>
+                            <input type="number" name="amount_paid" min="0" step="0.01"
+                                   class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Payment Method</label>
+                            <select name="payment_method" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                <option value="cash">💵 Cash</option>
+                                <option value="bank_transfer">🏦 Bank Transfer</option>
+                                <option value="cheque">📃 Cheque</option>
+                                <option value="online">📱 Online</option>
+                                <option value="other">📎 Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Received By</label>
+                            <input type="text" name="received_by"
+                                   class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="Name">
+                        </div>
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Attach Documents / Images</label>
                     <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
@@ -305,6 +342,14 @@
 
     <script>
     const sellCustomers = <?php echo json_encode($customers->map(fn($c)=>['id'=>$c->id,'name'=>$c->name,'phone'=>$c->phone??'','cnic'=>$c->cnic??''])->values()); ?>;
+
+    function calcSellTotal() {
+        const rate = parseFloat(document.getElementById('sell-per-sqft')?.value) || 0;
+        const area = parseFloat(document.getElementById('sell-sqft-area')?.value) || 0;
+        if (rate > 0 && area > 0) {
+            document.getElementById('sell-total-shopplot').value = (rate * area).toFixed(2);
+        }
+    }
 
     // Sync visible total inputs to hidden field before submit
     document.querySelector('#modal-add-sell form').addEventListener('submit', function(){

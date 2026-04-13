@@ -19,30 +19,26 @@ return new class extends Migration {
             $table->softDeletes();
         });
 
-        // Update shops: owner_id now references owners table
+        // Now that owners table exists, add the FK on shops.owner_id
         Schema::table('shops', function (Blueprint $table) {
-            $table->dropForeign(['owner_id']);
             $table->foreign('owner_id')->references('id')->on('owners')->nullOnDelete();
         });
 
-        // Update rent_entries: owner_id now references owners table
-        Schema::table('rent_entries', function (Blueprint $table) {
-            $table->dropForeign(['owner_id']);
-            $table->foreign('owner_id')->references('id')->on('owners')->nullOnDelete();
-        });
-
-        // Update owner_ledgers: owner_id now references owners table
+        // Now that owners table exists, add the FK on owner_ledgers.owner_id
         Schema::table('owner_ledgers', function (Blueprint $table) {
-            $table->dropForeign(['owner_id']);
-            $table->foreign('owner_id')->references('id')->on('owners')->cascadeOnDelete();
+            $table->foreign('owner_id')->references('id')->on('owners')->nullOnDelete();
         });
 
-        // Add customer_id and owner_id to sell_purchase_entries for linking
+        // Add customer/owner linking columns to sell_purchase_entries
         Schema::table('sell_purchase_entries', function (Blueprint $table) {
-            $table->foreignId('seller_customer_id')->nullable()->constrained('customers')->nullOnDelete();
-            $table->foreignId('buyer_customer_id')->nullable()->constrained('customers')->nullOnDelete();
-            $table->foreignId('seller_owner_id')->nullable()->constrained('owners')->nullOnDelete();
-            $table->foreignId('buyer_owner_id')->nullable()->constrained('owners')->nullOnDelete();
+            $table->unsignedBigInteger('seller_customer_id')->nullable();
+            $table->unsignedBigInteger('buyer_customer_id')->nullable();
+            $table->unsignedBigInteger('seller_owner_id')->nullable();
+            $table->unsignedBigInteger('buyer_owner_id')->nullable();
+            $table->foreign('seller_customer_id')->references('id')->on('customers')->nullOnDelete();
+            $table->foreign('buyer_customer_id')->references('id')->on('customers')->nullOnDelete();
+            $table->foreign('seller_owner_id')->references('id')->on('owners')->nullOnDelete();
+            $table->foreign('buyer_owner_id')->references('id')->on('owners')->nullOnDelete();
         });
     }
 
@@ -58,17 +54,10 @@ return new class extends Migration {
 
         Schema::table('owner_ledgers', function (Blueprint $table) {
             $table->dropForeign(['owner_id']);
-            $table->foreign('owner_id')->references('id')->on('users')->cascadeOnDelete();
-        });
-
-        Schema::table('rent_entries', function (Blueprint $table) {
-            $table->dropForeign(['owner_id']);
-            $table->foreign('owner_id')->references('id')->on('users')->nullOnDelete();
         });
 
         Schema::table('shops', function (Blueprint $table) {
             $table->dropForeign(['owner_id']);
-            $table->foreign('owner_id')->references('id')->on('users')->nullOnDelete();
         });
 
         Schema::dropIfExists('owners');

@@ -25,7 +25,6 @@ class SellPurchaseController extends Controller
         }
 
         $entries   = $query->latest()->paginate(20);
-        // Use SellMarket (not generic Market) for the market dropdown
         $markets   = SellMarket::orderBy('name')->get();
         $customers = Customer::orderBy('name')->get(['id','name','phone','cnic']);
         $owners    = Owner::orderBy('name')->get(['id','name','phone','cnic']);
@@ -36,7 +35,8 @@ class SellPurchaseController extends Controller
     public function show(SellPurchaseEntry $entry)
     {
         $entry->load(['sellMarket', 'documents', 'sellerCustomer', 'buyerCustomer']);
-        return view('sell.show', compact('entry'));
+        $remaining = max(0, (float)$entry->total - (float)($entry->amount_paid ?? 0));
+        return view('sell.show', compact('entry', 'remaining'));
     }
 
     public function printReceipt(SellPurchaseEntry $entry)
@@ -56,6 +56,9 @@ class SellPurchaseController extends Controller
             'per_sqft_rate'       => 'nullable|numeric|min:0',
             'sqft'                => 'nullable|numeric|min:0',
             'total'               => 'required|numeric|min:0',
+            'amount_paid'         => 'nullable|numeric|min:0',
+            'payment_method'      => 'nullable|in:cash,bank_transfer,cheque,online,other',
+            'received_by'         => 'nullable|string|max:255',
             'seller_name'         => 'nullable|string|max:255',
             'seller_cnic'         => 'nullable|string|max:50',
             'seller_phone'        => 'nullable|string|max:50',
@@ -72,6 +75,9 @@ class SellPurchaseController extends Controller
             'seller_owner_id'     => 'nullable|exists:owners,id',
             'buyer_owner_id'      => 'nullable|exists:owners,id',
         ]);
+
+        $data['amount_paid']    = $data['amount_paid'] ?? 0;
+        $data['payment_method'] = $data['payment_method'] ?? 'cash';
 
         $entry = SellPurchaseEntry::create($data);
 

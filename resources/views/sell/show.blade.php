@@ -14,6 +14,11 @@
         $color = $colorMap[$entry->entry_type] ?? 'slate';
         $iconMap = ['shop'=>'fa-store','plot'=>'fa-map','car'=>'fa-car'];
         $icon = $iconMap[$entry->entry_type] ?? 'fa-exchange-alt';
+        $amountPaid = (float)($entry->amount_paid ?? 0);
+        $totalAmt   = (float)$entry->total;
+        $remaining  = max(0, $totalAmt - $amountPaid);
+        $paidPct    = $totalAmt > 0 ? min(100, round($amountPaid / $totalAmt * 100)) : 0;
+        $pmLabels   = ['cash'=>'Cash','bank_transfer'=>'Bank Transfer','cheque'=>'Cheque','online'=>'Online','other'=>'Other'];
     @endphp
     <div class="bg-gradient-to-br from-{{ $color }}-600 to-{{ $color }}-800 rounded-2xl p-6 mb-6 text-white relative overflow-hidden">
         <div class="absolute inset-0 opacity-10">
@@ -28,10 +33,17 @@
                     <span class="text-xs px-2.5 py-1 rounded-full font-semibold {{ $entry->transaction_type==='sell' ? 'bg-red-400/60' : 'bg-emerald-400/60' }}">
                         {{ ucfirst($entry->transaction_type) }}
                     </span>
+                    @if($remaining > 0)
+                    <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-400/60">
+                        <i class="fas fa-exclamation-circle mr-1"></i>Partial Payment
+                    </span>
+                    @else
+                    <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-400/60">
+                        <i class="fas fa-check-circle mr-1"></i>Fully Paid
+                    </span>
+                    @endif
                 </div>
-                <h2 class="text-2xl font-bold">
-                    Rs {{ number_format($entry->total, 0) }}
-                </h2>
+                <h2 class="text-2xl font-bold">Rs {{ number_format($totalAmt, 0) }}</h2>
                 <p class="text-{{ $color }}-200 text-sm mt-1">
                     <i class="fas fa-calendar mr-1"></i>{{ $entry->date->format('d M Y') }}
                     @if($entry->sellMarket)
@@ -41,6 +53,19 @@
                         &nbsp;·&nbsp;# {{ $entry->shop_or_item_number }}
                     @endif
                 </p>
+                <!-- Payment progress bar -->
+                <div class="mt-3 w-64">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-white/80">Paid: Rs {{ number_format($amountPaid, 0) }}</span>
+                        <span class="text-white/60">{{ $paidPct }}%</span>
+                    </div>
+                    <div class="h-2 bg-white/20 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full {{ $remaining > 0 ? 'bg-amber-400' : 'bg-emerald-400' }}" style="width: {{ $paidPct }}%"></div>
+                    </div>
+                    @if($remaining > 0)
+                    <p class="text-xs text-white/70 mt-1">Remaining: Rs {{ number_format($remaining, 0) }}</p>
+                    @endif
+                </div>
             </div>
             <div class="flex gap-2 shrink-0">
                 <a href="{{ route('sell.receipt', $entry) }}" target="_blank"
@@ -62,6 +87,35 @@
         </div>
     </div>
 
+    <!-- Payment Summary Card -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-center">
+            <p class="text-xs text-slate-500 mb-1">Total Amount</p>
+            <p class="text-lg font-bold text-slate-800">Rs {{ number_format($totalAmt, 0) }}</p>
+        </div>
+        <div class="bg-emerald-50 rounded-2xl border border-emerald-200 shadow-sm p-4 text-center">
+            <p class="text-xs text-emerald-600 mb-1">Amount Paid</p>
+            <p class="text-lg font-bold text-emerald-700">Rs {{ number_format($amountPaid, 0) }}</p>
+        </div>
+        <div class="bg-{{ $remaining > 0 ? 'amber' : 'slate' }}-50 rounded-2xl border border-{{ $remaining > 0 ? 'amber' : 'slate' }}-200 shadow-sm p-4 text-center">
+            <p class="text-xs text-{{ $remaining > 0 ? 'amber' : 'slate' }}-600 mb-1">Remaining</p>
+            <p class="text-lg font-bold text-{{ $remaining > 0 ? 'amber' : 'slate' }}-700">Rs {{ number_format($remaining, 0) }}</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-center">
+            <p class="text-xs text-slate-500 mb-1">Payment Method</p>
+            <p class="text-sm font-semibold text-slate-700 flex items-center justify-center gap-1">
+                @php
+                    $pmIcon = ['cash'=>'fa-money-bill-wave','bank_transfer'=>'fa-university','cheque'=>'fa-file-invoice','online'=>'fa-mobile-alt','other'=>'fa-ellipsis-h'];
+                @endphp
+                <i class="fas {{ $pmIcon[$entry->payment_method ?? 'cash'] ?? 'fa-money-bill-wave' }} text-indigo-500"></i>
+                {{ $pmLabels[$entry->payment_method ?? 'cash'] ?? 'Cash' }}
+            </p>
+            @if($entry->received_by)
+            <p class="text-xs text-slate-400 mt-1">by {{ $entry->received_by }}</p>
+            @endif
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <!-- Seller -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
@@ -77,18 +131,9 @@
             </a>
             @endif
             <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-slate-500">Name</span>
-                    <span class="font-medium text-slate-800">{{ $entry->seller_name ?: '—' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500">CNIC</span>
-                    <span class="font-mono text-slate-700">{{ $entry->seller_cnic ?: '—' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500">Phone</span>
-                    <span class="text-slate-700">{{ $entry->seller_phone ?: '—' }}</span>
-                </div>
+                <div class="flex justify-between"><span class="text-slate-500">Name</span><span class="font-medium text-slate-800">{{ $entry->seller_name ?: '—' }}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">CNIC</span><span class="font-mono text-slate-700">{{ $entry->seller_cnic ?: '—' }}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Phone</span><span class="text-slate-700">{{ $entry->seller_phone ?: '—' }}</span></div>
             </div>
         </div>
 
@@ -106,18 +151,9 @@
             </a>
             @endif
             <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-slate-500">Name</span>
-                    <span class="font-medium text-slate-800">{{ $entry->buyer_name ?: '—' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500">CNIC</span>
-                    <span class="font-mono text-slate-700">{{ $entry->buyer_cnic ?: '—' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500">Phone</span>
-                    <span class="text-slate-700">{{ $entry->buyer_phone ?: '—' }}</span>
-                </div>
+                <div class="flex justify-between"><span class="text-slate-500">Name</span><span class="font-medium text-slate-800">{{ $entry->buyer_name ?: '—' }}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">CNIC</span><span class="font-mono text-slate-700">{{ $entry->buyer_cnic ?: '—' }}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Phone</span><span class="text-slate-700">{{ $entry->buyer_phone ?: '—' }}</span></div>
             </div>
         </div>
     </div>
@@ -132,57 +168,55 @@
         </h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
             @if($entry->entry_type !== 'car')
-            @if($entry->per_sqft_rate)
-            <div class="bg-slate-50 rounded-xl p-3">
-                <p class="text-xs text-slate-500 mb-1">Per Sqft Rate</p>
-                <p class="font-semibold text-slate-800">Rs {{ number_format($entry->per_sqft_rate, 0) }}</p>
-            </div>
-            @endif
-            @if($entry->sqft)
-            <div class="bg-slate-50 rounded-xl p-3">
-                <p class="text-xs text-slate-500 mb-1">Area</p>
-                <p class="font-semibold text-slate-800">{{ number_format($entry->sqft, 2) }} sqft</p>
-            </div>
-            @endif
-            @if($entry->shop_or_item_number)
-            <div class="bg-slate-50 rounded-xl p-3">
-                <p class="text-xs text-slate-500 mb-1">Shop / Plot #</p>
-                <p class="font-semibold text-slate-800">{{ $entry->shop_or_item_number }}</p>
-            </div>
-            @endif
+                @if($entry->per_sqft_rate)
+                <div class="bg-slate-50 rounded-xl p-3"><p class="text-xs text-slate-500 mb-1">Per Sqft Rate</p><p class="font-semibold text-slate-800">Rs {{ number_format($entry->per_sqft_rate, 0) }}</p></div>
+                @endif
+                @if($entry->sqft)
+                <div class="bg-slate-50 rounded-xl p-3"><p class="text-xs text-slate-500 mb-1">Area</p><p class="font-semibold text-slate-800">{{ number_format($entry->sqft, 2) }} sqft</p></div>
+                @endif
+                @if($entry->shop_or_item_number)
+                <div class="bg-slate-50 rounded-xl p-3"><p class="text-xs text-slate-500 mb-1">Shop / Plot #</p><p class="font-semibold text-slate-800">{{ $entry->shop_or_item_number }}</p></div>
+                @endif
             @endif
 
             @if($entry->entry_type === 'car')
-            @if($entry->car_make)
-            <div class="bg-slate-50 rounded-xl p-3">
-                <p class="text-xs text-slate-500 mb-1">Make</p>
-                <p class="font-semibold text-slate-800">{{ $entry->car_make }}</p>
-            </div>
-            @endif
-            @if($entry->car_model)
-            <div class="bg-slate-50 rounded-xl p-3">
-                <p class="text-xs text-slate-500 mb-1">Model</p>
-                <p class="font-semibold text-slate-800">{{ $entry->car_model }}</p>
-            </div>
-            @endif
-            @if($entry->car_year)
-            <div class="bg-slate-50 rounded-xl p-3">
-                <p class="text-xs text-slate-500 mb-1">Year</p>
-                <p class="font-semibold text-slate-800">{{ $entry->car_year }}</p>
-            </div>
-            @endif
-            @if($entry->car_registration)
-            <div class="bg-slate-50 rounded-xl p-3">
-                <p class="text-xs text-slate-500 mb-1">Registration</p>
-                <p class="font-semibold text-slate-800 font-mono">{{ $entry->car_registration }}</p>
-            </div>
-            @endif
+                @if($entry->car_make)<div class="bg-slate-50 rounded-xl p-3"><p class="text-xs text-slate-500 mb-1">Make</p><p class="font-semibold text-slate-800">{{ $entry->car_make }}</p></div>@endif
+                @if($entry->car_model)<div class="bg-slate-50 rounded-xl p-3"><p class="text-xs text-slate-500 mb-1">Model</p><p class="font-semibold text-slate-800">{{ $entry->car_model }}</p></div>@endif
+                @if($entry->car_year)<div class="bg-slate-50 rounded-xl p-3"><p class="text-xs text-slate-500 mb-1">Year</p><p class="font-semibold text-slate-800">{{ $entry->car_year }}</p></div>@endif
+                @if($entry->car_registration)<div class="bg-slate-50 rounded-xl p-3"><p class="text-xs text-slate-500 mb-1">Registration</p><p class="font-semibold text-slate-800 font-mono">{{ $entry->car_registration }}</p></div>@endif
             @endif
 
-            <div class="bg-indigo-50 rounded-xl p-3 col-span-2 sm:col-span-1">
+            <div class="bg-indigo-50 rounded-xl p-3">
                 <p class="text-xs text-indigo-500 mb-1">Total Amount</p>
-                <p class="font-bold text-indigo-700 text-lg">Rs {{ number_format($entry->total, 0) }}</p>
+                <p class="font-bold text-indigo-700 text-lg">Rs {{ number_format($totalAmt, 0) }}</p>
             </div>
+            <div class="bg-emerald-50 rounded-xl p-3">
+                <p class="text-xs text-emerald-500 mb-1">Amount Paid</p>
+                <p class="font-bold text-emerald-700 text-lg">Rs {{ number_format($amountPaid, 0) }}</p>
+            </div>
+            @if($remaining > 0)
+            <div class="bg-amber-50 rounded-xl p-3">
+                <p class="text-xs text-amber-500 mb-1">Remaining</p>
+                <p class="font-bold text-amber-700 text-lg">Rs {{ number_format($remaining, 0) }}</p>
+            </div>
+            @endif
+        </div>
+
+        <!-- Payment method row -->
+        <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm border-t border-slate-100 pt-4">
+            <div class="bg-slate-50 rounded-xl p-3">
+                <p class="text-xs text-slate-500 mb-1">Payment Method</p>
+                <p class="font-semibold text-slate-800">
+                    <i class="fas {{ $pmIcon[$entry->payment_method ?? 'cash'] ?? 'fa-money-bill-wave' }} text-indigo-400 mr-1"></i>
+                    {{ $pmLabels[$entry->payment_method ?? 'cash'] ?? 'Cash' }}
+                </p>
+            </div>
+            @if($entry->received_by)
+            <div class="bg-slate-50 rounded-xl p-3">
+                <p class="text-xs text-slate-500 mb-1">Received By</p>
+                <p class="font-semibold text-slate-800"><i class="fas fa-user text-slate-400 mr-1"></i>{{ $entry->received_by }}</p>
+            </div>
+            @endif
         </div>
 
         @if($entry->notes)
@@ -214,14 +248,12 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             @foreach($entry->documents as $doc)
             <div class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
-                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0
-                    {{ $doc->type === 'image' ? 'bg-blue-100' : 'bg-slate-100' }}">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 {{ $doc->type === 'image' ? 'bg-blue-100' : 'bg-slate-100' }}">
                     <i class="fas {{ $doc->type === 'image' ? 'fa-image text-blue-600' : 'fa-file-pdf text-slate-500' }} text-sm"></i>
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs font-medium text-slate-800 truncate">{{ $doc->name }}</p>
-                    <a href="{{ asset('storage/' . $doc->path) }}" target="_blank"
-                       class="text-xs text-indigo-600 hover:underline">
+                    <a href="{{ asset('storage/' . $doc->path) }}" target="_blank" class="text-xs text-indigo-600 hover:underline">
                         {{ $doc->type === 'image' ? 'View Image' : 'Open File' }}
                     </a>
                 </div>
@@ -244,13 +276,17 @@
                 <option value="photo">🖼 Photo</option>
                 <option value="other" selected>📎 Other</option>
             </select>
-            <div class="flex flex-col sm:flex-row gap-3">
-                <input type="file" name="documents[]" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
-                       class="flex-1 text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100">
-                <button type="submit" class="px-5 py-2 btn-primary text-white rounded-xl text-sm font-medium shrink-0">
-                    <i class="fas fa-upload mr-1"></i> Upload
-                </button>
+            <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-400 transition-colors cursor-pointer" onclick="document.getElementById('sell-doc-upload').click()">
+                <input type="file" id="sell-doc-upload" name="documents[]" multiple
+                       accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
+                       class="hidden" onchange="updateSellFileLabel(this)">
+                <i class="fas fa-cloud-upload-alt text-2xl text-slate-300 mb-1 block" id="sell-upload-icon"></i>
+                <span id="sell-file-label" class="text-sm text-slate-500">Click to choose files</span>
+                <p class="text-xs text-slate-400 mt-1">Images, PDF, DOC — max 20MB each</p>
             </div>
+            <button type="submit" class="w-full px-5 py-2.5 btn-primary text-white rounded-xl text-sm font-medium">
+                <i class="fas fa-upload mr-1"></i> Upload
+            </button>
         </form>
         @endcan
     </div>
@@ -267,7 +303,7 @@
                     <p class="text-xs text-slate-500" id="delete-doc-name"></p>
                 </div>
             </div>
-            <p class="text-sm text-slate-600 mb-4">Type <span class="font-bold text-red-600">123</span> to confirm deletion. This cannot be undone.</p>
+            <p class="text-sm text-slate-600 mb-4">Type <span class="font-bold text-red-600">123</span> to confirm deletion.</p>
             <input type="text" id="delete-confirm-input" placeholder="Type 123 here..."
                    class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-red-400"
                    oninput="document.getElementById('btn-confirm-delete').disabled = this.value !== '123'">
@@ -280,9 +316,7 @@
             </div>
         </div>
     </div>
-    <form id="delete-doc-form" method="POST" class="hidden">
-        @csrf @method('DELETE')
-    </form>
+    <form id="delete-doc-form" method="POST" class="hidden">@csrf @method('DELETE')</form>
     <script>
         let deleteActionUrl = '';
         function openDeleteModal(url, name) {
@@ -293,17 +327,29 @@
             document.getElementById('modal-delete-doc').classList.remove('hidden');
             setTimeout(() => document.getElementById('delete-confirm-input').focus(), 100);
         }
-        function closeDeleteModal() {
-            document.getElementById('modal-delete-doc').classList.add('hidden');
-            deleteActionUrl = '';
-        }
+        function closeDeleteModal() { document.getElementById('modal-delete-doc').classList.add('hidden'); }
         function submitDelete() {
             document.getElementById('delete-doc-form').action = deleteActionUrl;
             document.getElementById('delete-doc-form').submit();
         }
-        document.getElementById('modal-delete-doc').addEventListener('click', function(e) {
-            if (e.target === this) closeDeleteModal();
-        });
-    </script>
+        document.getElementById('modal-delete-doc').addEventListener('click', function(e) { if (e.target === this) closeDeleteModal(); });
 
+        function updateSellFileLabel(input) {
+            const label = document.getElementById('sell-file-label');
+            const icon  = document.getElementById('sell-upload-icon');
+            if (input.files.length > 0) {
+                label.textContent = input.files.length === 1 ? input.files[0].name : input.files.length + ' files selected';
+                label.classList.add('text-indigo-600','font-semibold');
+                label.classList.remove('text-slate-500');
+                icon.classList.add('text-indigo-400');
+                icon.classList.remove('text-slate-300');
+            } else {
+                label.textContent = 'Click to choose files';
+                label.classList.remove('text-indigo-600','font-semibold');
+                label.classList.add('text-slate-500');
+                icon.classList.remove('text-indigo-400');
+                icon.classList.add('text-slate-300');
+            }
+        }
+    </script>
 </x-app-layout>

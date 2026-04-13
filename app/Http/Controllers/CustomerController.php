@@ -24,16 +24,39 @@ class CustomerController extends Controller
         return view('customers.index', compact('customers', 'shops'));
     }
 
+
+    /**
+     * Quick AJAX store — returns JSON. Used by inline modals so page doesn't reload.
+     */
+    public function quickStore(Request $request)
+    {
+        $data = $request->validate([
+            'name'        => 'required|string|max:255',
+            'father_name' => 'nullable|string|max:255',
+            'phone'       => 'nullable|string|max:50',
+            'cnic'        => 'nullable|string|max:20',
+            'address'     => 'nullable|string',
+        ]);
+        $customer = Customer::create($data);
+        return response()->json([
+            'id'    => $customer->id,
+            'name'  => $customer->name,
+            'phone' => $customer->phone ?? '',
+            'cnic'  => $customer->cnic  ?? '',
+        ]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'    => 'required|string|max:255',
-            'phone'   => 'nullable|string|max:50',
-            'cnic'    => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'email'   => 'nullable|email|max:255',
-            'shop_id' => 'nullable|exists:shops,id',
-            'notes'   => 'nullable|string',
+            'name'        => 'required|string|max:255',
+            'father_name' => 'nullable|string|max:255',
+            'phone'       => 'nullable|string|max:50',
+            'cnic'        => 'nullable|string|max:20',
+            'address'     => 'nullable|string',
+            'email'       => 'nullable|email|max:255',
+            'shop_id'     => 'nullable|exists:shops,id',
+            'notes'       => 'nullable|string',
         ]);
         $customer = Customer::create($data);
 
@@ -46,6 +69,10 @@ class CustomerController extends Controller
                     'type' => str_contains($file->getMimeType(), 'image') ? 'image' : 'document',
                 ]);
             }
+        }
+        // If called from an inline modal (AJAX-like or same-page), redirect back
+        if ($request->has('_redirect_back') || $request->headers->get('referer')) {
+            return redirect()->back()->with('success', 'Customer "' . $customer->name . '" created.');
         }
         return redirect()->route('customers.index')->with('success', 'Customer added.');
     }

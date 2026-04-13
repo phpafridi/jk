@@ -8,19 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('customers', function (Blueprint $table) {
-            if (Schema::hasColumn('customers', 'linked_user_id')) {
-                $table->dropConstrainedForeignId('linked_user_id');
-            }
-        });
+        // linked_user_id was stored as plain unsignedBigInteger (no FK), nothing to drop
     }
 
     public function down(): void
     {
-        Schema::table('customers', function (Blueprint $table) {
-            if (!Schema::hasColumn('customers', 'linked_user_id')) {
-                $table->foreignId('linked_user_id')->nullable()->constrained('users')->nullOnDelete();
-            }
-        });
+        //
     }
 };

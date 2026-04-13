@@ -14,7 +14,31 @@ class SellMarketController extends Controller
     public function index()
     {
         $markets = SellMarket::withCount('shops')->latest()->paginate(20);
+
+        // Enrich with payment stats
+        $markets->getCollection()->transform(function($market) {
+            $entries = SellPurchaseEntry::where('sell_market_id', $market->id)->get();
+            $market->total_entries  = $entries->count();
+            $market->total_value    = $entries->sum('total');
+            $market->total_paid     = $entries->sum('amount_paid');
+            $market->total_pending  = max(0, $market->total_value - $market->total_paid);
+            return $market;
+        });
+
         return view('sell.markets.index', compact('markets'));
+    }
+
+    public function showMarket(SellMarket $sellMarket)
+    {
+        $shops = $sellMarket->shops()->latest()->paginate(20);
+
+        // Sell entries for this market
+        $entries     = SellPurchaseEntry::where('sell_market_id', $sellMarket->id)->latest()->get();
+        $totalValue  = $entries->sum('total');
+        $totalPaid   = $entries->sum('amount_paid');
+        $totalPending= max(0, $totalValue - $totalPaid);
+
+        return view('sell.markets.show', compact('sellMarket', 'shops', 'entries', 'totalValue', 'totalPaid', 'totalPending'));
     }
 
     public function storeMarket(Request $request)

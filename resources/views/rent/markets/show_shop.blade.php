@@ -36,15 +36,29 @@
                 </p>
                 @endif
             </div>
-            <div class="flex gap-3">
+            <div class="flex gap-3 flex-wrap">
                 <div class="bg-white/20 backdrop-blur rounded-xl px-4 py-3 text-center">
                     <p class="text-xs text-emerald-200">Monthly Rent</p>
                     <p class="text-lg font-bold">Rs {{ number_format($rentShop->rent_amount ?? 0, 0) }}</p>
                 </div>
+                @if($rentShop->rent_start_date)
+                <div class="bg-white/20 backdrop-blur rounded-xl px-4 py-3 text-center">
+                    <p class="text-xs text-emerald-200">Renting Since</p>
+                    <p class="text-sm font-bold">{{ $rentShop->rent_start_date->format('M Y') }}</p>
+                    <p class="text-xs text-emerald-200">{{ $rentStatus['months_due'] }} month(s) billed</p>
+                </div>
+                @endif
                 <div class="bg-white/20 backdrop-blur rounded-xl px-4 py-3 text-center">
                     <p class="text-xs text-emerald-200">Total Collected</p>
                     <p class="text-lg font-bold">Rs {{ number_format($totalPaid, 0) }}</p>
                 </div>
+                @if($rentStatus['months_missed'] > 0)
+                <div class="bg-red-500/40 backdrop-blur rounded-xl px-4 py-3 text-center">
+                    <p class="text-xs text-red-100">Missed</p>
+                    <p class="text-lg font-bold text-red-100">{{ $rentStatus['months_missed'] }} months</p>
+                    <p class="text-xs text-red-100">Rs {{ number_format($rentStatus['missed_amount'], 0) }}</p>
+                </div>
+                @endif
             </div>
         </div>
     </div>
@@ -88,6 +102,16 @@
                         </div>
                     </div>
                     <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Payment Method</label>
+                        <select name="payment_method" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="cash">💵 Cash</option>
+                            <option value="bank_transfer">🏦 Bank Transfer</option>
+                            <option value="cheque">📃 Cheque</option>
+                            <option value="online">📱 Online</option>
+                            <option value="other">📎 Other</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Received By</label>
                         <input type="text" name="received_by"
                                class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Name">
@@ -119,15 +143,13 @@
                             <option value="other" selected>📎 Other</option>
                         </select>
                     </div>
-                    <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-emerald-400 transition-colors">
-                        <input type="file" name="documents[]" multiple id="file-upload"
+                    <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-emerald-400 transition-colors cursor-pointer" onclick="document.getElementById('rent-file-upload').click()">
+                        <input type="file" name="documents[]" multiple id="rent-file-upload"
                                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
-                               class="hidden" onchange="updateFileLabel(this)">
-                        <label for="file-upload" class="cursor-pointer block">
-                            <i class="fas fa-cloud-upload-alt text-3xl text-slate-300 mb-2 block"></i>
-                            <span id="file-label" class="text-sm text-slate-500">Click to choose files</span>
-                            <p class="text-xs text-slate-400 mt-1">Images, PDF, DOC — max 20MB each</p>
-                        </label>
+                               class="hidden" onchange="updateRentFileLabel(this)">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-slate-300 mb-2 block" id="rent-upload-icon"></i>
+                        <span id="rent-file-label" class="text-sm text-slate-500">Click to choose files</span>
+                        <p class="text-xs text-slate-400 mt-1">Images, PDF, DOC — max 20MB each</p>
                     </div>
                     <button type="submit" class="w-full py-2.5 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors">
                         <i class="fas fa-upload mr-1"></i> Upload
@@ -171,6 +193,7 @@
                                 <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Paid</th>
                                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Customer</th>
                                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Received By</th>
+                                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Method</th>
                                 <th class="text-right px-5 py-3"></th>
                             </tr>
                         </thead>
@@ -189,6 +212,10 @@
                                 </td>
                                 <td class="px-5 py-3 text-slate-600 text-xs">{{ $entry->customer->name ?? '—' }}</td>
                                 <td class="px-5 py-3 text-slate-500 text-xs">{{ $entry->received_by ?? '—' }}</td>
+                                <td class="px-5 py-3 text-slate-500 text-xs">
+                                    @php $pm=['cash'=>'💵 Cash','bank_transfer'=>'🏦 Bank','cheque'=>'📃 Cheque','online'=>'📱 Online','other'=>'Other']; @endphp
+                                    {{ $pm[$entry->payment_method ?? 'cash'] ?? '💵 Cash' }}
+                                </td>
                                 <td class="px-5 py-3 text-right">
                                     <div class="flex items-center justify-end gap-1.5">
                                         <a href="{{ route('rent.entries.receipt', $entry) }}" target="_blank"
@@ -322,11 +349,23 @@
         document.getElementById('customer-dd').classList.add('hidden');
     }
 
-    function updateFileLabel(input) {
-        const label = document.getElementById('file-label');
-        label.textContent = input.files.length > 0
-            ? input.files.length + ' file(s) selected'
-            : 'Click to choose files';
+    function updateRentFileLabel(input) {
+        const label = document.getElementById('rent-file-label');
+        const icon  = document.getElementById('rent-upload-icon');
+        if (input.files.length > 0) {
+            const names = Array.from(input.files).map(f => f.name).join(', ');
+            label.textContent = input.files.length === 1 ? input.files[0].name : input.files.length + ' files: ' + names;
+            label.classList.add('text-emerald-600', 'font-semibold');
+            label.classList.remove('text-slate-500');
+            icon.classList.add('text-emerald-400');
+            icon.classList.remove('text-slate-300');
+        } else {
+            label.textContent = 'Click to choose files';
+            label.classList.remove('text-emerald-600', 'font-semibold');
+            label.classList.add('text-slate-500');
+            icon.classList.remove('text-emerald-400');
+            icon.classList.add('text-slate-300');
+        }
     }
 
     function openLightbox(src, name) {

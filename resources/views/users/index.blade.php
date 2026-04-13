@@ -112,11 +112,32 @@
             </div>
             <form method="POST" action="{{ route('users.store') }}" class="p-5 space-y-4">
                 @csrf
+                @if($errors->any())
+                <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                    <ul class="list-disc list-inside space-y-1">
+                        @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
                     <input type="text" name="name" required value="{{ old('name') }}"
                            class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                            placeholder="e.g. Ahmed Khan">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Father / Husband Name</label>
+                    <input type="text" name="father_name" value="{{ old('father_name') }}"
+                           class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="e.g. Mohammad Khan">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">CNIC <span class="text-slate-400 text-xs">(must be unique)</span></label>
+                    <input type="text" name="cnic" value="{{ old('cnic') }}"
+                           class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="00000-0000000-0">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Email Address *</label>
@@ -165,6 +186,7 @@
             </div>
             <form id="reset-pw-form" method="POST" class="p-5 space-y-4">
                 @csrf @method('PATCH')
+                <input type="hidden" id="reset-pw-base-url" value="{{ route('users.password', '__ID__') }}">
                 <p class="text-sm text-slate-600">Set new password for <strong id="reset-pw-name"></strong>:</p>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">New Password *</label>
@@ -191,7 +213,8 @@
     <script>
     function openResetPassword(userId, userName) {
         document.getElementById('reset-pw-name').textContent = userName;
-        document.getElementById('reset-pw-form').action = '/users/' + userId + '/password';
+        var base = document.getElementById('reset-pw-base-url').value;
+        document.getElementById('reset-pw-form').action = base.replace('__ID__', userId);
         document.getElementById('modal-reset-pw').classList.remove('hidden');
     }
     </script>

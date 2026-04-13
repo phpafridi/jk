@@ -10,8 +10,14 @@
         <div class="relative">
             <h2 class="text-2xl font-bold">{{ $sellMarket->name }}</h2>
             @if($sellMarket->location)<p class="text-amber-200 text-sm mt-1"><i class="fas fa-map-marker-alt mr-1"></i>{{ $sellMarket->location }}</p>@endif
-            <div class="flex gap-4 mt-4">
+            <div class="flex flex-wrap gap-4 mt-4">
                 <div class="bg-white/20 backdrop-blur rounded-xl px-4 py-2"><p class="text-xs text-amber-200">Total Shops/Plots</p><p class="text-xl font-bold">{{ $shops->total() }}</p></div>
+                <div class="bg-white/20 backdrop-blur rounded-xl px-4 py-2"><p class="text-xs text-amber-200">Entries</p><p class="text-xl font-bold">{{ $entries->count() }}</p></div>
+                <div class="bg-white/20 backdrop-blur rounded-xl px-4 py-2"><p class="text-xs text-amber-200">Total Value</p><p class="text-xl font-bold">Rs {{ number_format($totalValue, 0) }}</p></div>
+                <div class="bg-emerald-400/40 backdrop-blur rounded-xl px-4 py-2"><p class="text-xs text-emerald-100">Total Paid</p><p class="text-xl font-bold">Rs {{ number_format($totalPaid, 0) }}</p></div>
+                @if($totalPending > 0)
+                <div class="bg-red-400/40 backdrop-blur rounded-xl px-4 py-2"><p class="text-xs text-red-100">Pending</p><p class="text-xl font-bold">Rs {{ number_format($totalPending, 0) }}</p></div>
+                @endif
             </div>
         </div>
     </div>

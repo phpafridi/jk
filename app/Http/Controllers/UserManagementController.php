@@ -27,15 +27,22 @@ class UserManagementController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
-            'role'     => 'required|exists:roles,name',
+            'name'        => 'required|string|max:255',
+            'father_name' => 'nullable|string|max:255',
+            'email'       => 'required|email|unique:users,email',
+            'cnic'        => 'nullable|string|max:20|unique:users,cnic',
+            'password'    => 'required|string|min:8',
+            'role'        => 'required|exists:roles,name',
+        ], [
+            'cnic.unique' => 'A user with this CNIC already exists.',
+            'email.unique' => 'A user with this email already exists.',
         ]);
         $user = User::create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
-            'password' => Hash::make($data['password']),
+            'name'        => $data['name'],
+            'father_name' => $data['father_name'] ?? null,
+            'email'       => $data['email'],
+            'cnic'        => $data['cnic'] ?? null,
+            'password'    => Hash::make($data['password']),
         ]);
         $user->assignRole($data['role']);
         return redirect()->route('users.index')->with('success', 'User created.');

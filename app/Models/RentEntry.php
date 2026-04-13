@@ -6,7 +6,7 @@ class RentEntry extends Model
 {
     protected $fillable = [
         'rent_shop_id', 'shop_number', 'rent', 'date',
-        'customer_id', 'received_by', 'amount_paid', 'notes'
+        'customer_id', 'received_by', 'payment_method', 'amount_paid', 'notes'
     ];
     protected $casts = [
         'date'        => 'date',

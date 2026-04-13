@@ -25,7 +25,11 @@
             </div>
             <p class="text-2xl font-bold text-slate-800">Rs {{ number_format($stats['rent_this_month'], 0) }}</p>
             <p class="text-xs text-slate-500 mt-1">This Month</p>
-            <div class="mt-2 text-xs text-emerald-600 font-medium">Collected rent</div>
+            @if($stats['rent_pending'] > 0)
+            <div class="mt-2 text-xs text-amber-600 font-medium"><i class="fas fa-exclamation-circle mr-1"></i>Rs {{ number_format($stats['rent_pending'], 0) }} pending</div>
+            @else
+            <div class="mt-2 text-xs text-emerald-600 font-medium">All rents paid</div>
+            @endif
         </a>
 
         <a href="{{ route('sell.index') }}" class="card-stat bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:border-amber-300 group">
@@ -63,6 +67,91 @@
             <p class="text-xs text-slate-500 mt-1">Registered Owners</p>
             <div class="mt-2 text-xs text-purple-600 font-medium">{{ number_format($stats['customers']) }} customers</div>
         </a>
+    </div>
+
+    <!-- Rent & Instalment Pending Panels -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+        <!-- Rent Pending by Market -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h2 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-key text-emerald-500"></i> Rent Pending by Market
+                @if($stats['rent_pending'] > 0)
+                <span class="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Rs {{ number_format($stats['rent_pending'], 0) }}</span>
+                @endif
+            </h2>
+            @if($rentMarkets->isEmpty())
+            <p class="text-sm text-slate-400 text-center py-4">No rent markets found</p>
+            @else
+            <div class="space-y-3">
+                @foreach($rentMarkets as $rm)
+                <a href="{{ route('rent.markets.show', $rm['id']) }}" class="block p-3 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50 transition-colors">
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="font-medium text-slate-800 text-sm">{{ $rm['name'] }}</p>
+                        <span class="text-xs text-slate-400">{{ $rm['total_shops'] }} shops</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="flex gap-3">
+                            @if($rm['pending_shops'] > 0)
+                            <span class="text-amber-600"><i class="fas fa-exclamation-circle mr-1"></i>{{ $rm['pending_shops'] }} shop(s), {{ $rm['pending_months'] }} month(s) pending</span>
+                            @else
+                            <span class="text-emerald-600"><i class="fas fa-check-circle mr-1"></i>All paid</span>
+                            @endif
+                        </div>
+                        <div class="flex gap-2 font-semibold">
+                            @if($rm['pending_amount'] > 0)
+                            <span class="text-amber-700">Due: Rs {{ number_format($rm['pending_amount'], 0) }}</span>
+                            @endif
+                            <span class="text-emerald-600">Paid: Rs {{ number_format($rm['paid_amount'], 0) }}</span>
+                        </div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            @endif
+        </div>
+
+        <!-- Instalment Pending by Market -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h2 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-store text-indigo-500"></i> Instalment Status by Market
+                @if($stats['pending'] > 0)
+                <span class="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Rs {{ number_format($stats['pending'], 0) }} pending</span>
+                @endif
+            </h2>
+            @if($instalmentMarkets->isEmpty())
+            <div class="text-center py-6">
+                <i class="fas fa-check-circle text-emerald-400 text-3xl mb-2"></i>
+                <p class="text-sm text-emerald-600 font-medium">All instalments fully paid!</p>
+            </div>
+            @else
+            <div class="space-y-3">
+                @foreach($instalmentMarkets as $im)
+                <a href="{{ route('markets.show', $im['id']) }}" class="block p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-colors">
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="font-medium text-slate-800 text-sm">{{ $im['name'] }}</p>
+                        <span class="text-xs text-slate-400">{{ $im['total_shops'] }} shops</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <div>
+                            @if($im['pending_shops'] > 0)
+                            <span class="text-amber-600"><i class="fas fa-exclamation-circle mr-1"></i>{{ $im['pending_shops'] }} shop(s), {{ $im['pending_months'] }} month(s) missed</span>
+                            @else
+                            <span class="text-emerald-600"><i class="fas fa-check-circle mr-1"></i>All paid</span>
+                            @endif
+                        </div>
+                        <div class="flex gap-2 font-semibold">
+                            @if($im['pending_amount'] > 0)
+                            <span class="text-amber-700">Due: Rs {{ number_format($im['pending_amount'], 0) }}</span>
+                            @endif
+                            <span class="text-emerald-600">Paid: Rs {{ number_format($im['paid_amount'], 0) }}</span>
+                        </div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            @endif
+        </div>
     </div>
 
     <!-- Quick Actions + Recent Payments -->
