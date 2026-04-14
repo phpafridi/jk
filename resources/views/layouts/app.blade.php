@@ -120,6 +120,23 @@
                 <i class="fas fa-user-shield w-5 text-center"></i> User Management
             </a>
             @endcan
+
+            <!-- Install App (mobile only: Android & iOS) -->
+            <div id="sidebar-install-section" style="display:none;">
+                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2">App</p>
+                <button id="sidebar-install-btn"
+                        onclick="sidebarInstallClick()"
+                        class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white text-left"
+                        style="display:none;">
+                    <i class="fas fa-download w-5 text-center"></i> Install App
+                </button>
+                <div id="sidebar-install-ios" style="display:none;"
+                     class="px-3 py-2.5 rounded-lg text-sm text-slate-400 leading-snug">
+                    <i class="fas fa-download w-5 text-center mr-1"></i>
+                    <span class="font-medium text-slate-300">Install App</span><br>
+                    <span class="text-xs ml-6">Tap <strong>Share</strong> → <strong>Add to Home Screen</strong></span>
+                </div>
+            </div>
         </nav>
 
         <!-- User Info -->
@@ -349,10 +366,41 @@ if ('serviceWorker' in navigator) {
 // ── Install Prompt (Android / Chrome / Edge) ─────────────────────────
 let _deferredPrompt = null;
 
+function _updateSidebarInstallBtn() {
+    const section  = document.getElementById('sidebar-install-section');
+    const btn      = document.getElementById('sidebar-install-btn');
+    const iosDiv   = document.getElementById('sidebar-install-ios');
+    const isIos    = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone === true
+                      || window.matchMedia('(display-mode: standalone)').matches;
+
+    // Only show on Android or iOS, and only if not already installed
+    if (isStandalone || (!isIos && !isAndroid)) return;
+
+    if (isIos) {
+        if (section) section.style.display = 'block';
+        if (iosDiv)  iosDiv.style.display  = 'block';
+    } else if (isAndroid && _deferredPrompt) {
+        if (section) section.style.display = 'block';
+        if (btn)     btn.style.display     = 'flex';
+    }
+}
+
+function sidebarInstallClick() {
+    if (!_deferredPrompt) return;
+    _deferredPrompt.prompt();
+    _deferredPrompt.userChoice.then(() => {
+        _deferredPrompt = null;
+        document.getElementById('sidebar-install-section')?.remove();
+    });
+}
+
 window.addEventListener('beforeinstallprompt', (e) => {
     console.log('[PWA] beforeinstallprompt fired ✓');
     e.preventDefault();
     _deferredPrompt = e;
+    _updateSidebarInstallBtn();
     const dismissed = localStorage.getItem('pwa-dismissed');
     if (dismissed && Date.now() - dismissed < 3 * 24 * 60 * 60 * 1000) return;
     _showInstallBanner('android');
@@ -361,6 +409,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
     console.log('[PWA] App installed ✓');
     document.getElementById('pwa-install-banner')?.remove();
+    document.getElementById('sidebar-install-section')?.remove();
     _deferredPrompt = null;
 });
 
@@ -368,6 +417,9 @@ window.addEventListener('appinstalled', () => {
 (function () {
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isInStandalone = window.navigator.standalone === true;
+    if (isInStandalone) return;
+    // Show sidebar iOS hint always (not just once)
+    if (isIos) setTimeout(_updateSidebarInstallBtn, 500);
     if (!isIos || isInStandalone) return;
     const dismissed = localStorage.getItem('pwa-ios-dismissed');
     if (dismissed && Date.now() - dismissed < 3 * 24 * 60 * 60 * 1000) return;
