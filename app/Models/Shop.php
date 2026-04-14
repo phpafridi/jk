@@ -8,7 +8,7 @@ class Shop extends Model
 {
     use SoftDeletes;
     protected $fillable = [
-        'market_id','shop_number','owner_id','type',
+        'market_id','shop_number','property_dealer','owner_id','type',
         'date_of_payment','total_amount','paid_amount','rent_amount','status',
         'instalment_start_date','monthly_instalment',
     ];

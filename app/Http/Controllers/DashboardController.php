@@ -7,6 +7,7 @@ use App\Models\RentEntry;
 use App\Models\RentShop;
 use App\Models\RentMarket;
 use App\Models\ShopPayment;
+use App\Models\SellPurchaseEntry;
 use App\Models\ConstructionItem;
 use App\Models\Customer;
 use App\Models\Owner;
@@ -125,19 +126,25 @@ class DashboardController extends Controller
         $totalInstalmentShops   = $instalmentMarkets->sum('pending_shops');
 
         $stats = [
-            'markets'             => Market::count(),
-            'shops'               => Shop::count(),
-            'rent_this_month'     => RentEntry::whereMonth('date', now()->month)
-                                        ->whereYear('date', now()->year)
-                                        ->sum('amount_paid'),
-            'total_income'        => ShopPayment::sum('amount'),
-            'pending'             => $totalInstalmentPending,
-            'pending_shops_count' => $totalInstalmentShops,
-            'rent_pending'        => $totalRentPending,
-            'rent_pending_count'  => $totalRentPendingShops,
-            'construction_total'  => ConstructionItem::sum('total'),
-            'owners'              => Owner::count(),
-            'customers'           => Customer::count(),
+            'markets'               => Market::count(),
+            'shops'                 => Shop::count(),
+            'rent_this_month'       => RentEntry::whereMonth('date', now()->month)
+                                          ->whereYear('date', now()->year)
+                                          ->sum('amount_paid'),
+            // Sell/Purchase — correct figures from sell_purchase_entries
+            'sell_total_collected'  => SellPurchaseEntry::sum('amount_paid'),
+            'sell_pending'          => SellPurchaseEntry::selectRaw('SUM(GREATEST(0, total - amount_paid)) as pending')->value('pending') ?? 0,
+            // Instalment
+            'instalment_pending'    => $totalInstalmentPending,
+            'instalment_pending_count' => $totalInstalmentShops,
+            // Rent
+            'rent_pending'          => $totalRentPending,
+            'rent_pending_count'    => $totalRentPendingShops,
+            // Construction
+            'construction_total'    => ConstructionItem::sum('total'),
+            // Owners/Customers
+            'owners'                => Owner::count(),
+            'customers'             => Customer::count(),
         ];
 
         $recentPayments = ShopPayment::with(['shop.market', 'shop.owner', 'recordedBy'])

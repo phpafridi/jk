@@ -6,7 +6,7 @@ class SellPurchaseEntry extends Model
 {
     protected $fillable = [
         'entry_type','transaction_type','sell_market_id','date','shop_or_item_number',
-        'per_sqft_rate','sqft','total','amount_paid','payment_method','received_by',
+        'per_sqft_rate','sqft','total','amount_paid','payment_method','received_by','paid_to','authorized_by',
         'seller_name','seller_cnic','seller_phone',
         'buyer_name','buyer_cnic','buyer_phone','car_make','car_model','car_year',
         'car_registration','notes',

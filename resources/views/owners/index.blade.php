@@ -64,7 +64,7 @@
                 <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
                     <i class="fas fa-plus-circle text-purple-500"></i> Add Entry
                 </h3>
-                <form method="POST" action="{{ route('owners.store') }}" class="space-y-3">
+                <form method="POST" action="{{ route('owners.store') }}" enctype="multipart/form-data" class="space-y-3">
                     @csrf
                     <input type="hidden" name="owner_id" value="{{ $selectedOwner->id }}">
 
@@ -86,6 +86,18 @@
                         <label class="block text-xs font-medium text-slate-700 mb-1">Date *</label>
                         <input type="date" name="date" required value="{{ date('Y-m-d') }}"
                                class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Payment Method</label>
+                        <select name="payment_method" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="">— Select —</option>
+                            <option value="cash">💵 Cash</option>
+                            <option value="bank_transfer">🏦 Bank Transfer</option>
+                            <option value="cheque">📃 Cheque</option>
+                            <option value="online">📱 Online</option>
+                            <option value="other">📎 Other</option>
+                        </select>
                     </div>
 
                     <div>
@@ -120,6 +132,19 @@
                         <input type="text" name="reference"
                                class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                placeholder="Optional">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">
+                            <i class="fas fa-paperclip text-slate-400 mr-1"></i>Attach Invoice / Receipt
+                        </label>
+                        <label class="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-slate-300 hover:border-purple-400 rounded-xl px-3 py-3 cursor-pointer transition-colors bg-slate-50">
+                            <i class="fas fa-cloud-upload-alt text-slate-400 text-xl" id="owner-inv-icon"></i>
+                            <span class="text-xs text-slate-500 text-center" id="owner-inv-label">Click to attach invoice or photo</span>
+                            <span class="text-xs text-slate-400">JPG, PNG, PDF up to 10MB</span>
+                            <input type="file" name="invoice" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
+                                   class="hidden" onchange="document.getElementById('owner-inv-label').textContent=this.files[0]?this.files[0].name:'Click to attach invoice or photo';document.getElementById('owner-inv-icon').className='fas fa-file-check text-purple-500 text-xl';">
+                        </label>
                     </div>
 
                     <button type="submit" class="w-full py-2.5 btn-primary text-white rounded-xl text-sm font-medium">
@@ -158,6 +183,7 @@
                                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
                                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Project / Description</th>
                                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Market / Shop</th>
+                                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Method</th>
                                 <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Debit</th>
                                 <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Credit</th>
                                 <th class="text-right px-5 py-3"></th>
@@ -172,10 +198,23 @@
                                     @if($ledger->reference)
                                     <p class="text-xs text-slate-400">Ref: {{ $ledger->reference }}</p>
                                     @endif
+                                    @if($ledger->invoice_path)
+                                    <a href="{{ asset('storage/' . $ledger->invoice_path) }}" target="_blank"
+                                       class="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 mt-0.5">
+                                        <i class="fas fa-paperclip"></i> {{ $ledger->invoice_name ?? 'Invoice' }}
+                                    </a>
+                                    @endif
                                 </td>
                                 <td class="px-5 py-3 text-xs text-slate-500">
                                     {{ $ledger->market->name ?? '' }}
                                     @if($ledger->shop) · Shop #{{ $ledger->shop->shop_number }} @endif
+                                </td>
+                                <td class="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">
+                                    @if($ledger->payment_method)
+                                    @php $pm = ['cash'=>['💵','Cash'],'bank_transfer'=>['🏦','Bank'],'cheque'=>['📃','Cheque'],'online'=>['📱','Online'],'other'=>['📎','Other']][$ledger->payment_method] ?? ['','—']; @endphp
+                                    {{ $pm[0] }} {{ $pm[1] }}
+                                    @else —
+                                    @endif
                                 </td>
                                 <td class="px-5 py-3 text-right font-semibold {{ $ledger->transaction_type === 'debit' ? 'text-red-600' : 'text-slate-300' }}">
                                     {{ $ledger->transaction_type === 'debit' ? 'Rs '.number_format($ledger->amount,0) : '—' }}
@@ -198,7 +237,7 @@
                         </tbody>
                         <tfoot class="bg-slate-50 border-t-2 border-slate-200">
                             <tr>
-                                <td colspan="3" class="px-5 py-3 font-semibold text-slate-700 text-sm">Net Balance</td>
+                                <td colspan="4" class="px-5 py-3 font-semibold text-slate-700 text-sm">Net Balance</td>
                                 <td colspan="2" class="px-5 py-3 text-right font-bold text-base {{ $balance >= 0 ? 'text-green-600' : 'text-red-600' }}">
                                     Rs {{ number_format(abs($balance), 0) }} {{ $balance >= 0 ? '(CR)' : '(DR)' }}
                                 </td>

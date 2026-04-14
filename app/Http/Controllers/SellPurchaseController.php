@@ -59,6 +59,8 @@ class SellPurchaseController extends Controller
             'amount_paid'         => 'nullable|numeric|min:0',
             'payment_method'      => 'nullable|in:cash,bank_transfer,cheque,online,other',
             'received_by'         => 'nullable|string|max:255',
+            'paid_to'             => 'nullable|string|max:255',
+            'authorized_by'       => 'nullable|string|max:255',
             'seller_name'         => 'nullable|string|max:255',
             'seller_cnic'         => 'nullable|string|max:50',
             'seller_phone'        => 'nullable|string|max:50',

@@ -7,14 +7,14 @@
     <meta name="theme-color" content="#1e293b">
 
     <!-- PWA -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="{{ url('/manifest.json') }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
 
-    <title>{{ $title ?? config('app.name', 'PropManager') }}</title>
+    <title>{{ $title ?? config('app.name', 'JK') }}</title>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet" />
@@ -63,8 +63,8 @@
                 <i class="fas fa-building text-white text-sm"></i>
             </div>
             <div>
-                <p class="font-bold text-white text-sm leading-none">PropManager</p>
-                <p class="text-xs text-slate-400 mt-0.5">Property Management</p>
+                <p class="font-bold text-white text-sm leading-none">JK</p>
+
             </div>
             <button @click="sidebarOpen=false" class="ml-auto lg:hidden text-slate-400 hover:text-white">
                 <i class="fas fa-times"></i>
@@ -97,6 +97,10 @@
             </a>
             <a href="{{ route('owner-management.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('owner-management.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
                 <i class="fas fa-user-tie w-5 text-center"></i> Manage Owners
+            </a>
+
+            <a href="{{ route('reports.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('reports.*') ? 'active text-indigo-400' : 'hover:text-white' }}">
+                <i class="fas fa-chart-bar w-5 text-center"></i> Reports
             </a>
 
             <a href="{{ route('calculator') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('calculator') ? 'active text-indigo-400' : 'hover:text-white' }}">
@@ -329,10 +333,112 @@
     </div>
 </div>
 
-<!-- PWA Service Worker -->
+<!-- PWA Service Worker + Install Prompt -->
 <script>
+// ── Service Worker ───────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
+    window.addEventListener('load', () => {
+        const swUrl   = '{{ url("/sw.js") }}';
+        const swScope = '{{ rtrim(parse_url(config("app.url"), PHP_URL_PATH) ?: "/", "/") }}/';
+        navigator.serviceWorker.register(swUrl, { scope: swScope })
+            .then(reg => console.log('[PWA] SW registered, scope:', reg.scope))
+            .catch(err => console.error('[PWA] SW failed:', err));
+    });
+}
+
+// ── Install Prompt (Android / Chrome / Edge) ─────────────────────────
+let _deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('[PWA] beforeinstallprompt fired ✓');
+    e.preventDefault();
+    _deferredPrompt = e;
+    const dismissed = localStorage.getItem('pwa-dismissed');
+    if (dismissed && Date.now() - dismissed < 3 * 24 * 60 * 60 * 1000) return;
+    _showInstallBanner('android');
+});
+
+window.addEventListener('appinstalled', () => {
+    console.log('[PWA] App installed ✓');
+    document.getElementById('pwa-install-banner')?.remove();
+    _deferredPrompt = null;
+});
+
+// ── iOS Safari: no beforeinstallprompt, show manual instructions ──────
+(function () {
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isInStandalone = window.navigator.standalone === true;
+    if (!isIos || isInStandalone) return;
+    const dismissed = localStorage.getItem('pwa-ios-dismissed');
+    if (dismissed && Date.now() - dismissed < 3 * 24 * 60 * 60 * 1000) return;
+    // Small delay so page loads first
+    setTimeout(() => _showInstallBanner('ios'), 2000);
+})();
+
+// ── Banner UI ────────────────────────────────────────────────────────
+function _showInstallBanner(type) {
+    if (document.getElementById('pwa-install-banner')) return;
+
+    const isIos = type === 'ios';
+    const banner = document.createElement('div');
+    banner.id = 'pwa-install-banner';
+
+    banner.innerHTML = `
+        <style>
+            @keyframes pwaUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+            #pwa-install-banner { position:fixed;bottom:72px;left:10px;right:10px;z-index:99999;animation:pwaUp .3s ease; }
+            @media(min-width:600px){#pwa-install-banner{left:auto;right:20px;width:340px;bottom:20px;}}
+        </style>
+        <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-radius:18px;
+                    padding:14px 16px;display:flex;align-items:flex-start;gap:12px;
+                    box-shadow:0 8px 32px rgba(99,102,241,.5);font-family:'Plus Jakarta Sans',sans-serif;">
+            <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.2);
+                        display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    ${isIos
+                        ? '<path d="M12 3v13M8 9l4-6 4 6"/><rect x="3" y="19" width="18" height="2" rx="1"/>'
+                        : '<path d="M12 3v13M8 10l4 5 4-5"/><rect x="3" y="19" width="18" height="2" rx="1"/>'}
+                </svg>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <p style="font-weight:700;font-size:14px;margin:0 0 4px;">Install {{ config('app.name') }}</p>
+                ${isIos
+                    ? `<p style="font-size:12px;opacity:.9;margin:0;line-height:1.5;">
+                            Tap the <strong>Share</strong> button
+                            <svg style="display:inline;vertical-align:middle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M8 12H3v9h18v-9h-5M12 3v13M9 6l3-3 3 3"/></svg>
+                            then <strong>"Add to Home Screen"</strong>
+                       </p>`
+                    : `<p style="font-size:12px;opacity:.9;margin:0;">Add to home screen for fast access</p>`
+                }
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+                ${isIos
+                    ? ''
+                    : `<button id="pwa-install-btn" style="background:#fff;color:#6366f1;border:none;cursor:pointer;
+                            font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;
+                            font-family:inherit;white-space:nowrap;">Install</button>`
+                }
+                <button id="pwa-dismiss-btn" style="background:rgba(255,255,255,.18);color:#fff;border:none;
+                        cursor:pointer;font-size:12px;padding:5px 10px;border-radius:8px;font-family:inherit;">
+                    ${isIos ? 'Got it' : 'Not now'}
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(banner);
+
+    document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+        if (!_deferredPrompt) return;
+        _deferredPrompt.prompt();
+        await _deferredPrompt.userChoice;
+        _deferredPrompt = null;
+        banner.remove();
+    });
+
+    document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
+        localStorage.setItem(isIos ? 'pwa-ios-dismissed' : 'pwa-dismissed', Date.now());
+        banner.remove();
+    });
 }
 </script>
 </body>

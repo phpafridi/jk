@@ -78,6 +78,9 @@
                     <div class="label">تاریخ / Date</div>
                     <div class="value">{{ \Carbon\Carbon::parse($payDate)->format('d-m-Y') }}</div>
                     <div style="margin-top:8px;"><span class="rent-badge">🔑 RENT RECEIVED</span></div>
+                    @if($rentEntry->rentShop->property_dealer ?? false)
+                    <div style="margin-top:6px;" class="label">بذریعہ ڈیلر / Via Dealer: <strong>{{ $rentEntry->rentShop->property_dealer }}</strong></div>
+                    @endif
                 </div>
                 <div class="receipt-no-box">
                     <div class="label">رسید نمبر / Receipt No.</div>
@@ -149,15 +152,32 @@
                 <div class="sig-box">
                     <div class="sig-line"></div>
                     <div class="sig-label">دستخط منیجر / Manager Signature</div>
+                    @if($rentEntry->authorized_by)<div class="sig-label" style="margin-top:4px;color:#1e293b;">{{ $rentEntry->authorized_by }}</div>@endif
                 </div>
                 <div class="sig-box">
                     <div class="sig-line"></div>
                     <div class="sig-label">دستخط کرایہ دار / Tenant Signature</div>
                 </div>
             </div>
+            @if($rentEntry->received_by || $rentEntry->paid_to)
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+                @if($rentEntry->received_by)
+                <div class="field-row">
+                    <div class="field-label">موصول کیا / Received By</div>
+                    <div class="field-value">{{ $rentEntry->received_by }}</div>
+                </div>
+                @endif
+                @if($rentEntry->paid_to)
+                <div class="field-row">
+                    <div class="field-label">ادا کیا / Paid To</div>
+                    <div class="field-value">{{ $rentEntry->paid_to }}</div>
+                </div>
+                @endif
+            </div>
+            @endif
 
             <p style="text-align:center;font-size:10px;color:#94a3b8;margin-top:14px;">
-                Generated {{ now()->format('d M Y, h:i A') }} · PropManager Property Management
+                Generated {{ now()->format('d M Y, h:i A') }} · JK
             </p>
         </div>
         <div class="watermark">RENT</div>
@@ -175,7 +195,7 @@
     var date   = "{{ \Carbon\Carbon::parse($payDate)->format('d M Y') }}";
     var rno    = "{{ $rno }}";
     var forMonth = "{{ \Carbon\Carbon::parse($payDate)->format('F Y') }}";
-    var msg = '🔑 *PropManager - Rent Receipt*\n\n'
+    var msg = '🔑 JK - Rent Receipt*\n\n'
             + '📋 Receipt No: ' + rno + '\n'
             + '📅 Date: ' + date + '\n'
             + '📆 For Month: ' + forMonth + '\n'

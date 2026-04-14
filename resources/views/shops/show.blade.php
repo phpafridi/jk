@@ -85,7 +85,7 @@
                 <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
                     <i class="fas fa-plus-circle text-green-500"></i> Add Payment
                 </h3>
-                <form method="POST" action="{{ route('shops.payments.store', $shop) }}" class="space-y-3">
+                <form method="POST" action="{{ route('shops.payments.store', $shop) }}" enctype="multipart/form-data" class="space-y-3">
                     @csrf
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Amount (Rs) *</label>
@@ -111,8 +111,29 @@
                         <input type="text" name="received_by" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Name">
                     </div>
                     <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Paid To / Vendor</label>
+                        <input type="text" name="paid_to" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Recipient name">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Authorized By</label>
+                        <input type="text" name="authorized_by" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Authorizing person">
+                    </div>
+                    <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Notes</label>
                         <input type="text" name="notes" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Optional...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">
+                            <i class="fas fa-paperclip text-slate-400 mr-1"></i>Attach Invoices / Photos
+                        </label>
+                        <label class="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-xl px-3 py-3 cursor-pointer transition-colors bg-slate-50">
+                            <i class="fas fa-cloud-upload-alt text-slate-400 text-xl" id="pay-upload-icon"></i>
+                            <span class="text-xs text-slate-500 text-center" id="pay-upload-label">Click to attach invoices or photos</span>
+                            <span class="text-xs text-slate-400">JPG, PNG, PDF up to 10MB each</span>
+                            <input type="file" name="payment_documents[]" multiple
+                                   accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
+                                   class="hidden" onchange="updatePayUploadLabel(this)">
+                        </label>
                     </div>
                     <button type="submit" class="w-full py-2.5 btn-primary text-white rounded-xl text-sm font-medium">
                         <i class="fas fa-save mr-1"></i> Record Payment
@@ -322,6 +343,23 @@
             label.classList.remove('text-purple-600', 'font-medium');
             label.classList.add('text-slate-500');
             icon.classList.remove('text-purple-500');
+            icon.classList.add('text-slate-400');
+        }
+    }
+    function updatePayUploadLabel(input) {
+        const label = document.getElementById('pay-upload-label');
+        const icon  = document.getElementById('pay-upload-icon');
+        if (input.files.length > 0) {
+            label.textContent = input.files.length === 1 ? input.files[0].name : input.files.length + ' files selected';
+            label.classList.add('text-indigo-600', 'font-medium');
+            label.classList.remove('text-slate-500');
+            icon.classList.add('text-indigo-500');
+            icon.classList.remove('text-slate-400');
+        } else {
+            label.textContent = 'Click to attach invoices or photos';
+            label.classList.remove('text-indigo-600', 'font-medium');
+            label.classList.add('text-slate-500');
+            icon.classList.remove('text-indigo-500');
             icon.classList.add('text-slate-400');
         }
     }

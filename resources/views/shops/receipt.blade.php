@@ -66,6 +66,9 @@
                     <div class="label">تاریخ / Date</div>
                     <div class="value">{{ $payment->payment_date->format('d-m-Y') }}</div>
                     <div style="margin-top:8px;"><span class="paid-badge">✓ PAYMENT RECEIVED</span></div>
+                    @if($payment->shop->property_dealer)
+                    <div style="margin-top:6px;" class="label">بذریعہ ڈیلر / Via Dealer: <strong>{{ $payment->shop->property_dealer }}</strong></div>
+                    @endif
                 </div>
                 <div class="receipt-no-box">
                     <div class="label">رسید نمبر / Receipt No.</div>
@@ -120,14 +123,10 @@
                         <td>ماہانہ قسط / Monthly Instalment</td>
                         <td>Rs {{ number_format($payment->shop->monthly_instalment ?? 0, 0) }}</td>
                     </tr>
-                    <tr>
-                        <td>ایڈوانس / Advance (Total Paid Before)</td>
-                        <td>Rs {{ number_format(max(0, ($payment->shop->paid_amount ?? 0) - $payment->amount), 0) }}</td>
-                    </tr>
-                    <tr>
+                    {{-- <tr>
                         <td>کل رقم / Total Price</td>
                         <td>Rs {{ number_format($payment->shop->total_amount ?? 0, 0) }}</td>
-                    </tr>
+                    </tr> --}}
                     <tr>
                         <td>بقیہ رقم / Balance Due</td>
                         <td>Rs {{ number_format(max(0, ($payment->shop->total_amount ?? 0) - ($payment->shop->paid_amount ?? 0)), 0) }}</td>
@@ -143,15 +142,32 @@
                 <div class="sig-box">
                     <div class="sig-line"></div>
                     <div class="sig-label">دستخط منیجر / Manager Signature</div>
+                    @if($payment->authorized_by)<div class="sig-label" style="margin-top:4px;color:#1e293b;">{{ $payment->authorized_by }}</div>@endif
                 </div>
                 <div class="sig-box">
                     <div class="sig-line"></div>
                     <div class="sig-label">دستخط خریدار / Buyer Signature</div>
                 </div>
             </div>
+            @if($payment->received_by || $payment->paid_to)
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+                @if($payment->received_by)
+                <div class="field-row">
+                    <div class="field-label">موصول کیا / Received By</div>
+                    <div class="field-value">{{ $payment->received_by }}</div>
+                </div>
+                @endif
+                @if($payment->paid_to)
+                <div class="field-row">
+                    <div class="field-label">ادا کیا / Paid To</div>
+                    <div class="field-value">{{ $payment->paid_to }}</div>
+                </div>
+                @endif
+            </div>
+            @endif
 
             <p style="text-align:center;font-size:10px;color:#94a3b8;margin-top:14px;">
-                Generated {{ now()->format('d M Y, h:i A') }} · PropManager Property Management
+                Generated {{ now()->format('d M Y, h:i A') }} · JK
             </p>
         </div>
         <div class="watermark">PAID</div>
@@ -168,7 +184,7 @@
     var rno    = "{{ $payment->receipt_number }}";
     var bal    = "{{ number_format(max(0,($payment->shop->total_amount??0)-($payment->shop->paid_amount??0)), 0) }}";
     var monthly= "{{ number_format($payment->shop->monthly_instalment ?? 0, 0) }}";
-    var msg = '🏪 *PropManager - Instalment Receipt*\n\n'
+    var msg = '🏪 JK - Instalment Receipt*\n\n'
             + '📋 Receipt No: ' + rno + '\n'
             + '📅 Date: ' + date + '\n'
             + '👤 Buyer: ' + buyer + '\n'

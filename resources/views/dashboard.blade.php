@@ -39,9 +39,13 @@
                 </div>
                 <span class="text-xs text-slate-400 font-medium">Sell/Purchase</span>
             </div>
-            <p class="text-2xl font-bold text-slate-800">Rs {{ number_format($stats['total_income'], 0) }}</p>
+            <p class="text-2xl font-bold text-slate-800">Rs {{ number_format($stats['sell_total_collected'], 0) }}</p>
             <p class="text-xs text-slate-500 mt-1">Total Collections</p>
-            <div class="mt-2 text-xs text-amber-600 font-medium">Rs {{ number_format($stats['pending'], 0) }} pending</div>
+            @if($stats['sell_pending'] > 0)
+            <div class="mt-2 text-xs text-amber-600 font-medium">Rs {{ number_format($stats['sell_pending'], 0) }} pending</div>
+            @else
+            <div class="mt-2 text-xs text-emerald-600 font-medium">No pending amounts</div>
+            @endif
         </a>
 
         <a href="{{ route('construction.index') }}" class="card-stat bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:border-rose-300 group">
@@ -93,7 +97,7 @@
                     <div class="flex items-center justify-between text-xs">
                         <div class="flex gap-3">
                             @if($rm['pending_shops'] > 0)
-                            <span class="text-amber-600"><i class="fas fa-exclamation-circle mr-1"></i>{{ $rm['pending_shops'] }} shop(s), {{ $rm['pending_months'] }} month(s) pending</span>
+                            <span class="text-amber-600"><i class="fas fa-exclamation-circle mr-1"></i>{{ $rm['pending_shops'] }} shop(s){{ $rm['pending_months'] > 0 ? ', '.$rm['pending_months'].' month(s) pending' : ' — balance due' }}</span>
                             @else
                             <span class="text-emerald-600"><i class="fas fa-check-circle mr-1"></i>All paid</span>
                             @endif
@@ -115,8 +119,8 @@
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <h2 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
                 <i class="fas fa-store text-indigo-500"></i> Instalment Status by Market
-                @if($stats['pending'] > 0)
-                <span class="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Rs {{ number_format($stats['pending'], 0) }} pending</span>
+                @if($stats['instalment_pending'] > 0)
+                <span class="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Rs {{ number_format($stats['instalment_pending'], 0) }} pending</span>
                 @endif
             </h2>
             @if($instalmentMarkets->isEmpty())
@@ -135,7 +139,7 @@
                     <div class="flex items-center justify-between text-xs">
                         <div>
                             @if($im['pending_shops'] > 0)
-                            <span class="text-amber-600"><i class="fas fa-exclamation-circle mr-1"></i>{{ $im['pending_shops'] }} shop(s), {{ $im['pending_months'] }} month(s) missed</span>
+                            <span class="text-amber-600"><i class="fas fa-exclamation-circle mr-1"></i>{{ $im['pending_shops'] }} shop(s){{ $im['pending_months'] > 0 ? ', '.$im['pending_months'].' month(s) missed' : ' — balance due (no schedule set)' }}</span>
                             @else
                             <span class="text-emerald-600"><i class="fas fa-check-circle mr-1"></i>All paid</span>
                             @endif

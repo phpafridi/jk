@@ -12,11 +12,55 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\OwnerManagementController;
 use App\Http\Controllers\RentMarketController;
 use App\Http\Controllers\SellMarketController;
+use App\Http\Controllers\ReportsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+// ── PWA – served by Laravel so APP_URL is always correct ─────────────
+Route::get('/manifest.json', function () {
+    $base  = rtrim(config('app.url'), '/');
+    $asset = fn($path) => asset($path); // resolves to public/ correctly
+    return response()->json([
+        'name'             => config('app.name', 'PropManager') . ' - Property Management',
+        'short_name'       => config('app.name', 'PropManager'),
+        'description'      => 'Complete property management system for markets, shops, rent, and sales.',
+        'start_url'        => $base . '/dashboard',
+        'scope'            => rtrim(parse_url($base, PHP_URL_PATH) ?: '/', '/') . '/',
+        'display'          => 'standalone',
+        'background_color' => '#1e293b',
+        'theme_color'      => '#6366f1',
+        'orientation'      => 'any',
+        'lang'             => 'en',
+        'categories'       => ['business', 'finance'],
+        'icons' => [
+            ['src' => $asset('icons/icon-72.png'),  'sizes' => '72x72',   'type' => 'image/png', 'purpose' => 'maskable any'],
+            ['src' => $asset('icons/icon-96.png'),  'sizes' => '96x96',   'type' => 'image/png', 'purpose' => 'maskable any'],
+            ['src' => $asset('icons/icon-128.png'), 'sizes' => '128x128', 'type' => 'image/png', 'purpose' => 'maskable any'],
+            ['src' => $asset('icons/icon-192.png'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'maskable any'],
+            ['src' => $asset('icons/icon-512.png'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable any'],
+        ],
+        'shortcuts' => [
+            ['name' => 'Dashboard', 'short_name' => 'Home',    'url' => $base . '/dashboard', 'icons' => [['src' => $asset('icons/icon-96.png'), 'sizes' => '96x96']]],
+            ['name' => 'Markets',   'short_name' => 'Markets', 'url' => $base . '/markets',   'icons' => [['src' => $asset('icons/icon-96.png'), 'sizes' => '96x96']]],
+        ],
+    ])->header('Content-Type', 'application/manifest+json')
+      ->header('Cache-Control', 'no-store');
+})->name('pwa.manifest');
+
+Route::get('/sw.js', function () {
+    $base = rtrim(config('app.url'), '/');
+    // Extract just the path portion for the Service-Worker-Allowed header
+    $basePath = parse_url($base, PHP_URL_PATH) ?: '/';
+    $basePath = rtrim($basePath, '/') . '/';
+    $content = view('pwa.sw', ['base' => $base])->render();
+    return response($content, 200)
+        ->header('Content-Type', 'application/javascript')
+        ->header('Service-Worker-Allowed', $basePath)
+        ->header('Cache-Control', 'no-store');
+})->name('pwa.sw');
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -92,6 +136,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/construction/projects',                    [ConstructionController::class, 'storeProject'])->name('construction.projects.store')->middleware('can:manage construction');
     Route::delete('/construction/projects/{project}',        [ConstructionController::class, 'destroyProject'])->name('construction.projects.destroy')->middleware('can:manage construction');
     Route::post('/construction',                             [ConstructionController::class, 'store'])->name('construction.store')->middleware('can:manage construction');
+    Route::delete('/construction/documents/{document}',      [ConstructionController::class, 'destroyDocument'])->name('construction.documents.destroy')->middleware('can:manage construction');
     Route::delete('/construction/{item}',                    [ConstructionController::class, 'destroy'])->name('construction.destroy')->middleware('can:manage construction');
 
     // ── Owner Ledger (uses owners table) ──────────────────────
@@ -133,6 +178,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // ── Reports ───────────────────────────────────────────────
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
 });
 
 require __DIR__.'/auth.php';

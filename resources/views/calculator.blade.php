@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">Calculator</x-slot>
 
-    <div class="max-w-4xl mx-auto" x-data="{ tab: 'standard' }">
+    <div class="max-w-4xl mx-auto" x-data="{ tab: 'standard' }" x-init="$watch('tab', v => $el.dataset.tab = v); $el.dataset.tab = 'standard'">
 
         <!-- Tab Buttons -->
         <div class="flex gap-2 mb-6 bg-white rounded-2xl border border-slate-200 p-1.5 shadow-sm w-fit">
@@ -20,7 +20,7 @@
         <!-- Standard Calculator -->
         <div x-show="tab==='standard'" x-transition>
             <p class="text-center text-xs text-slate-400 mb-3"><i class="fas fa-keyboard mr-1"></i> Keyboard supported: digits, <kbd class="bg-slate-100 px-1 rounded">+ - * /</kbd>, <kbd class="bg-slate-100 px-1 rounded">Enter</kbd>, <kbd class="bg-slate-100 px-1 rounded">Backspace</kbd>, <kbd class="bg-slate-100 px-1 rounded">Esc</kbd> to clear</p>
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden max-w-sm mx-auto" x-data="stdCalc()" x-init="init()" @destroy="destroy()">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden max-w-sm mx-auto" x-data="stdCalc()" x-init="window._calc = $data" x-destroy="window._calc = null">
                 <!-- Display -->
                 <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-5 text-right">
                     <p class="text-slate-400 text-sm h-5 truncate" x-text="expression || ' '"></p>
@@ -29,29 +29,29 @@
                 <!-- Buttons -->
                 <div class="grid grid-cols-4 gap-px bg-slate-200">
                     <!-- Row 1 -->
-                    <button @click="clear()" class="calc-btn bg-red-50 text-red-600 hover:bg-red-100 font-semibold">AC</button>
-                    <button @click="toggleSign()" class="calc-btn bg-slate-50 text-slate-700 hover:bg-slate-100">+/−</button>
-                    <button @click="percent()" class="calc-btn bg-slate-50 text-slate-700 hover:bg-slate-100">%</button>
-                    <button @click="op('÷')" :class="activeOp==='÷'?'bg-indigo-600 text-white':'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'" class="calc-btn font-bold text-lg">÷</button>
+                    <button @click="clear(); $el.blur()" class="calc-btn bg-red-50 text-red-600 hover:bg-red-100 font-semibold">AC</button>
+                    <button @click="toggleSign(); $el.blur()" class="calc-btn bg-slate-50 text-slate-700 hover:bg-slate-100">+/−</button>
+                    <button @click="percent(); $el.blur()" class="calc-btn bg-slate-50 text-slate-700 hover:bg-slate-100">%</button>
+                    <button @click="op('÷'); $el.blur()" :class="activeOp==='÷'?'bg-indigo-600 text-white':'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'" class="calc-btn font-bold text-lg">÷</button>
                     <!-- Row 2 -->
-                    <button @click="digit('7')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">7</button>
-                    <button @click="digit('8')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">8</button>
-                    <button @click="digit('9')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">9</button>
-                    <button @click="op('×')" :class="activeOp==='×'?'bg-indigo-600 text-white':'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'" class="calc-btn font-bold text-lg">×</button>
+                    <button @click="digit('7'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">7</button>
+                    <button @click="digit('8'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">8</button>
+                    <button @click="digit('9'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">9</button>
+                    <button @click="op('×'); $el.blur()" :class="activeOp==='×'?'bg-indigo-600 text-white':'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'" class="calc-btn font-bold text-lg">×</button>
                     <!-- Row 3 -->
-                    <button @click="digit('4')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">4</button>
-                    <button @click="digit('5')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">5</button>
-                    <button @click="digit('6')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">6</button>
-                    <button @click="op('−')" :class="activeOp==='−'?'bg-indigo-600 text-white':'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'" class="calc-btn font-bold text-lg">−</button>
+                    <button @click="digit('4'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">4</button>
+                    <button @click="digit('5'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">5</button>
+                    <button @click="digit('6'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">6</button>
+                    <button @click="op('−'); $el.blur()" :class="activeOp==='−'?'bg-indigo-600 text-white':'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'" class="calc-btn font-bold text-lg">−</button>
                     <!-- Row 4 -->
-                    <button @click="digit('1')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">1</button>
-                    <button @click="digit('2')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">2</button>
-                    <button @click="digit('3')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">3</button>
-                    <button @click="op('+')" :class="activeOp==='+'?'bg-indigo-600 text-white':'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'" class="calc-btn font-bold text-lg">+</button>
+                    <button @click="digit('1'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">1</button>
+                    <button @click="digit('2'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">2</button>
+                    <button @click="digit('3'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">3</button>
+                    <button @click="op('+'); $el.blur()" :class="activeOp==='+'?'bg-indigo-600 text-white':'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'" class="calc-btn font-bold text-lg">+</button>
                     <!-- Row 5 -->
-                    <button @click="digit('0')" class="calc-btn bg-white text-slate-800 hover:bg-slate-50 col-span-2">0</button>
-                    <button @click="dot()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">.</button>
-                    <button @click="equals()" class="calc-btn bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-lg">=</button>
+                    <button @click="digit('0'); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50 col-span-2">0</button>
+                    <button @click="dot(); $el.blur()" class="calc-btn bg-white text-slate-800 hover:bg-slate-50">.</button>
+                    <button @click="equals(); $el.blur()" class="calc-btn bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-lg">=</button>
                 </div>
             </div>
         </div>
@@ -224,30 +224,6 @@
                 if (this.newInput || this.current === 'Error') { this.current = '0'; this.display = '0'; this.newInput = true; return; }
                 this.current = this.current.length > 1 ? this.current.slice(0, -1) : '0';
                 this.display = this.current;
-            },
-            handleKey(e) {
-                // Only handle keys when standard calculator tab is active and no input/button is focused
-                const tag = document.activeElement.tagName;
-                if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
-                if (tag === 'BUTTON') return; // prevent double-fire when a calc button is focused
-                const k = e.key;
-                if (k >= '0' && k <= '9')               { e.preventDefault(); this.digit(k); }
-                else if (k === '.')                      { e.preventDefault(); this.dot(); }
-                else if (k === '+')                      { e.preventDefault(); this.op('+'); }
-                else if (k === '-')                      { e.preventDefault(); this.op('\u2212'); }
-                else if (k === '*')                      { e.preventDefault(); this.op('\u00d7'); }
-                else if (k === '/')                      { e.preventDefault(); this.op('\u00f7'); }
-                else if (k === 'Enter' || k === '=')     { e.preventDefault(); this.equals(); }
-                else if (k === 'Backspace')              { e.preventDefault(); this.backspace(); }
-                else if (k === 'Delete' || k === 'Escape'){ e.preventDefault(); this.clear(); }
-                else if (k === '%')                      { e.preventDefault(); this.percent(); }
-            },
-            init() {
-                this._keyHandler = (e) => this.handleKey(e);
-                window.addEventListener('keydown', this._keyHandler);
-            },
-            destroy() {
-                window.removeEventListener('keydown', this._keyHandler);
             }
         }
     }
@@ -291,5 +267,30 @@
             fmt(n) { return Number(Math.round(n)).toLocaleString('en-PK'); }
         }
     }
+
+    // Single keyboard listener — registered once, never duplicated
+    window.addEventListener('keydown', function(e) {
+        const c = window._calc;
+        if (!c) return;
+        // Only fire when standard tab is active
+        const wrapper = document.querySelector('[data-tab]');
+        if (!wrapper || wrapper.dataset.tab !== 'standard') return;
+        // Ignore if an input/textarea/select is focused
+        const tag = document.activeElement.tagName;
+        if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+        // Ignore if a calc button is focused (prevents double-fire after mouse click)
+        if (tag === 'BUTTON' && document.activeElement.closest('.grid')) return;
+        const k = e.key;
+        if (k >= '0' && k <= '9')                { e.preventDefault(); c.digit(k); }
+        else if (k === '.')                       { e.preventDefault(); c.dot(); }
+        else if (k === '+')                       { e.preventDefault(); c.op('+'); }
+        else if (k === '-')                       { e.preventDefault(); c.op('\u2212'); }
+        else if (k === '*')                       { e.preventDefault(); c.op('\u00d7'); }
+        else if (k === '/')                       { e.preventDefault(); c.op('\u00f7'); }
+        else if (k === 'Enter' || k === '=')      { e.preventDefault(); c.equals(); }
+        else if (k === 'Backspace')               { e.preventDefault(); c.backspace(); }
+        else if (k === 'Delete' || k === 'Escape'){ e.preventDefault(); c.clear(); }
+        else if (k === '%')                       { e.preventDefault(); c.percent(); }
+    });
     </script>
 </x-app-layout>

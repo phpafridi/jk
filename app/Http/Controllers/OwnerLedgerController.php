@@ -6,6 +6,7 @@ use App\Models\OwnerLedger;
 use App\Models\Market;
 use App\Models\Shop;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class OwnerLedgerController extends Controller
 {
@@ -48,14 +49,26 @@ class OwnerLedgerController extends Controller
             'date'             => 'required|date',
             'description'      => 'nullable|string',
             'reference'        => 'nullable|string|max:255',
+            'payment_method'   => 'nullable|string|max:100',
         ]);
-        OwnerLedger::create($data);
+        $ledger = OwnerLedger::create($data);
+
+        // Save attached invoice / photo
+        if ($request->hasFile('invoice')) {
+            $file = $request->file('invoice');
+            $path = $file->store('owner-invoices', 'public');
+            $ledger->update(['invoice_path' => $path, 'invoice_name' => $file->getClientOriginalName()]);
+        }
+
         return redirect()->route('owners.index', ['owner_id' => $data['owner_id']])->with('success', 'Entry added.');
     }
 
     public function destroy(OwnerLedger $ownerLedger)
     {
         $ownerId = $ownerLedger->owner_id;
+        if ($ownerLedger->invoice_path) {
+            Storage::disk('public')->delete($ownerLedger->invoice_path);
+        }
         $ownerLedger->delete();
         return redirect()->route('owners.index', ['owner_id' => $ownerId])->with('success', 'Entry deleted.');
     }

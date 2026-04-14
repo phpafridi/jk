@@ -4,7 +4,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class OwnerLedger extends Model
 {
-    protected $fillable = ['owner_id','market_id','shop_id','transaction_type','amount','date','description','reference'];
+    protected $fillable = ['owner_id','market_id','shop_id','transaction_type','amount','date','description','reference','payment_method','invoice_path','invoice_name'];
     protected $casts    = ['date' => 'date', 'amount' => 'decimal:2'];
 
     public function owner()  { return $this->belongsTo(User::class, 'owner_id'); }

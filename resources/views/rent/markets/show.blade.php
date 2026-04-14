@@ -152,6 +152,10 @@
                         </select>
                     </div>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Property Dealer <span class="text-slate-400 text-xs">(optional)</span></label>
+                    <input type="text" name="property_dealer" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Dealer / agent name">
+                </div>
 
                 <!-- Rent tracking -->
                 <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-3">

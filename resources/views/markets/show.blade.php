@@ -135,7 +135,7 @@
                     <i class="fas fa-book mr-1"></i> Open Ledger
                 </a>
                 @can('manage shops')
-                <button onclick="openEditShop({{ $shop->id }}, '{{ addslashes($shop->shop_number) }}', {{ $shop->owner_id ?? 'null' }}, {{ $shop->total_amount }}, {{ $shop->paid_amount }}, '{{ $shop->status }}', '{{ $shop->instalment_start_date ? $shop->instalment_start_date->format('Y-m-d') : '' }}', {{ $shop->monthly_instalment ?? 0 }})"
+                <button onclick="openEditShop({{ $shop->id }}, '{{ addslashes($shop->shop_number) }}', {{ $shop->owner_id ?? 'null' }}, {{ $shop->total_amount }}, {{ $shop->paid_amount }}, '{{ $shop->status }}', '{{ $shop->instalment_start_date ? $shop->instalment_start_date->format('Y-m-d') : '' }}', {{ $shop->monthly_instalment ?? 0 }}, {{ $shop->customers->first()->id ?? 'null' }}, '{{ addslashes($shop->customers->first()->name ?? '') }}')"
                         class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors">
                     <i class="fas fa-pen text-xs"></i>
                 </button>
@@ -180,7 +180,11 @@
                         </select>
                     </div>
                 </div>
-                <div x-data="customerSearch()" class="relative">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Property Dealer <span class="text-slate-400 text-xs">(optional)</span></label>
+                    <input type="text" name="property_dealer" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Dealer / agent name">
+                </div>
+                <div x-data="customerSearch()" class="relative" @click.away="open=false">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Customer</label>
                     <input type="hidden" name="customer_id" :value="selectedId">
                     <div class="relative">
@@ -192,7 +196,7 @@
                             <button type="button" @click="clear()" x-show="selectedId" class="text-red-400 hover:text-red-600"><i class="fas fa-times text-xs"></i></button>
                         </span>
                     </div>
-                    <div x-show="open && results.length > 0" @click.away="open=false"
+                    <div x-show="open && (results.length > 0 || query.length > 1)"
                          class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
                         <template x-for="c in results" :key="c.id">
                             <button type="button" @click="select(c)"
@@ -204,7 +208,8 @@
                                 </div>
                             </button>
                         </template>
-                        <button type="button" @click="openCreateCustomer()" x-show="query.length > 1"
+                        <p x-show="results.length === 0 && query.length > 1 && !loading" class="px-4 py-2.5 text-sm text-slate-400 italic">No match found</p>
+                        <button type="button" @mousedown.prevent="openCreateCustomer()" x-show="query.length > 1"
                                 class="w-full text-left px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-sm font-medium text-indigo-700 flex items-center gap-2">
                             <i class="fas fa-plus-circle"></i> Create new customer "<span x-text="query"></span>"
                         </button>
@@ -272,6 +277,37 @@
                     </select>
                 </div>
 
+                <!-- Customer -->
+                <div id="edit-customer-search-wrap" x-data="customerSearch()" class="relative" @click.away="open=false">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Customer</label>
+                    <input type="hidden" name="customer_id" :value="selectedId">
+                    <div class="relative">
+                        <input type="text" x-model="query" @input.debounce.300ms="search()" @focus="onFocus()" @keydown.escape="open=false"
+                               :placeholder="selectedName || '— Search customer by name or phone —'"
+                               class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-10">
+                        <span class="absolute right-3 top-3 text-slate-400">
+                            <i class="fas fa-search text-xs" x-show="!selectedId"></i>
+                            <button type="button" @click="clear()" x-show="selectedId" class="text-red-400 hover:text-red-600"><i class="fas fa-times text-xs"></i></button>
+                        </span>
+                    </div>
+                    <div x-show="open && (results.length > 0 || query.length > 1)"
+                         class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                        <template x-for="c in results" :key="c.id">
+                            <button type="button" @click="select(c)"
+                                    class="w-full text-left px-4 py-2.5 hover:bg-indigo-50 text-sm flex items-center gap-3 border-b border-slate-50 last:border-0">
+                                <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs flex-shrink-0" x-text="c.name.charAt(0)"></div>
+                                <div><p class="font-medium text-slate-800" x-text="c.name"></p><p class="text-xs text-slate-400" x-text="c.phone || c.cnic || ''"></p></div>
+                            </button>
+                        </template>
+                        <p x-show="results.length === 0 && query.length > 1 && !loading" class="px-4 py-2.5 text-sm text-slate-400 italic">No match found</p>
+                        <button type="button" @mousedown.prevent="openCreateCustomer()" x-show="query.length > 1"
+                                class="w-full text-left px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-sm font-medium text-indigo-700 flex items-center gap-2">
+                            <i class="fas fa-plus-circle"></i> Create new customer "<span x-text="query"></span>"
+                        </button>
+                    </div>
+                    <p x-show="selectedId" class="text-xs text-emerald-600 mt-1"><i class="fas fa-check-circle mr-1"></i><span x-text="selectedName"></span> selected</p>
+                </div>
+
                 <!-- Instalment tracking -->
                 <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 space-y-3">
                     <p class="text-xs font-semibold text-indigo-700 uppercase tracking-wide"><i class="fas fa-calendar-alt mr-1"></i>Instalment Tracking</p>
@@ -315,7 +351,7 @@
     @endcan
 
     <script>
-    function openEditShop(id, shopNumber, ownerId, total, paid, status, startDate, monthly) {
+    function openEditShop(id, shopNumber, ownerId, total, paid, status, startDate, monthly, customerId, customerName) {
         document.getElementById('edit-shop-number').value     = shopNumber;
         document.getElementById('edit-shop-owner').value      = ownerId || '';
         document.getElementById('edit-shop-total').value      = total;
@@ -325,6 +361,20 @@
         document.getElementById('edit-shop-monthly').value    = monthly || '';
         var base = document.getElementById('edit-shop-base-url').value;
         document.getElementById('edit-shop-form').action      = base.replace('__ID__', id);
+        // Pre-fill customer in the Alpine customerSearch component
+        var alpineEl = document.getElementById('edit-customer-search-wrap');
+        if (alpineEl && alpineEl._x_dataStack) {
+            var comp = alpineEl._x_dataStack[0];
+            if (customerId) {
+                comp.selectedId   = customerId;
+                comp.selectedName = customerName;
+                comp.query        = '';
+            } else {
+                comp.selectedId   = null;
+                comp.selectedName = '';
+                comp.query        = '';
+            }
+        }
         document.getElementById('modal-edit-shop').classList.remove('hidden');
     }
 
@@ -337,7 +387,7 @@
             async search() {
                 this.loading = true;
                 try {
-                    const r = await fetch(`/search/customers?q=${encodeURIComponent(this.query)}`);
+                    const r = await fetch(`{{ route('search.customers') }}?q=${encodeURIComponent(this.query)}`);
                     if (!r.ok) throw new Error('Search failed');
                     this.results = await r.json();
                 } catch(e) {

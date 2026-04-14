@@ -2,9 +2,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ConstructionItem;
+use App\Models\ConstructionDocument;
 use App\Models\ConstructionProject;
 use App\Models\Market;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ConstructionController extends Controller
 {
@@ -63,7 +65,14 @@ class ConstructionController extends Controller
 
     public function destroyProject(ConstructionProject $project)
     {
-        // Delete all items under this project too
+        // Delete all items and their documents under this project
+        $items = ConstructionItem::where('project_name', $project->name)->with('documents')->get();
+        foreach ($items as $item) {
+            foreach ($item->documents as $doc) {
+                Storage::disk('public')->delete($doc->path);
+            }
+            $item->documents()->delete();
+        }
         ConstructionItem::where('project_name', $project->name)->delete();
         $project->delete();
         return redirect()->route('construction.index')->with('success', 'Project deleted.');
@@ -74,7 +83,7 @@ class ConstructionController extends Controller
         $projectName = urldecode($projectName);
         $project = ConstructionProject::where('name', $projectName)->first();
 
-        $query = ConstructionItem::with('market')
+        $query = ConstructionItem::with(['market', 'documents'])
             ->where('project_name', $projectName);
 
         $items   = $query->latest()->paginate(50);
@@ -88,16 +97,20 @@ class ConstructionController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'market_id'    => 'nullable|exists:markets,id',
-            'project_name' => 'required|string|max:255',
-            'item_name'    => 'required|string|max:255',
-            'quantity'     => 'required|numeric|min:0',
-            'unit'         => 'required|string|max:50',
-            'measurement'  => 'nullable|string|max:100',
-            'unit_price'   => 'required|numeric|min:0',
-            'total'        => 'required|numeric|min:0',
-            'date'         => 'required|date',
-            'notes'        => 'nullable|string',
+            'market_id'      => 'nullable|exists:markets,id',
+            'project_name'   => 'required|string|max:255',
+            'item_name'      => 'required|string|max:255',
+            'quantity'       => 'required|numeric|min:0',
+            'unit'           => 'required|string|max:50',
+            'measurement'    => 'nullable|string|max:100',
+            'unit_price'     => 'required|numeric|min:0',
+            'total'          => 'required|numeric|min:0',
+            'date'           => 'required|date',
+            'notes'          => 'nullable|string',
+            'payment_method' => 'nullable|string|max:50',
+            'received_by'    => 'nullable|string|max:100',
+            'vendor_name'    => 'nullable|string|max:100',
+            'documents.*'    => 'nullable|file|max:20480|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx',
         ]);
 
         // Auto-inherit market_id from project if not provided
@@ -108,7 +121,21 @@ class ConstructionController extends Controller
             }
         }
 
-        ConstructionItem::create($data);
+        $item = ConstructionItem::create($data);
+
+        // Handle invoice / document uploads
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $file) {
+                $ext  = strtolower($file->getClientOriginalExtension());
+                $type = in_array($ext, ['jpg','jpeg','png','gif','webp']) ? 'image' : 'document';
+                $path = $file->store('construction-docs', 'public');
+                $item->documents()->create([
+                    'name' => $file->getClientOriginalName(),
+                    'path' => $path,
+                    'type' => $type,
+                ]);
+            }
+        }
 
         if ($request->redirect_project) {
             return redirect()->route('construction.show', urlencode($request->redirect_project))->with('success', 'Transaction added.');
@@ -119,7 +146,20 @@ class ConstructionController extends Controller
     public function destroy(ConstructionItem $item)
     {
         $project = $item->project_name;
+        // Delete associated documents from storage
+        foreach ($item->documents as $doc) {
+            Storage::disk('public')->delete($doc->path);
+        }
+        $item->documents()->delete();
         $item->delete();
         return redirect()->route('construction.show', urlencode($project))->with('success', 'Item deleted.');
+    }
+
+    public function destroyDocument(ConstructionDocument $document)
+    {
+        $this->authorize('manage construction');
+        Storage::disk('public')->delete($document->path);
+        $document->delete();
+        return back()->with('success', 'Document deleted.');
     }
 }

@@ -6,7 +6,7 @@ use Carbon\Carbon;
 class RentShop extends Model
 {
     protected $fillable = [
-        'rent_market_id','shop_number','tenant_name','tenant_phone','tenant_cnic',
+        'rent_market_id','shop_number','property_dealer','tenant_name','tenant_phone','tenant_cnic',
         'status','rent_amount','notes','rent_start_date'
     ];
     protected $casts = [

@@ -12,7 +12,13 @@ class ShopController extends Controller
     public function store(Request $request, Market $market)
     {
         $data = $request->validate([
-            'shop_number'          => 'required|string|max:255',
+            'shop_number'          => [
+                'required','string','max:255',
+                \Illuminate\Validation\Rule::unique('shops','shop_number')
+                    ->where('market_id', $market->id)
+                    ->whereNull('deleted_at'),
+            ],
+            'property_dealer'      => 'nullable|string|max:255',
             'customer_id'          => 'nullable|exists:customers,id',
             'owner_id'             => 'nullable|exists:owners,id',
             'type'                 => 'required|in:instalment,rent,sell,purchase',
@@ -69,6 +75,8 @@ class ShopController extends Controller
             'payment_date'   => 'required|date',
             'payment_method' => 'nullable|string|max:100',
             'received_by'    => 'nullable|string|max:255',
+            'paid_to'        => 'nullable|string|max:255',
+            'authorized_by'  => 'nullable|string|max:255',
             'notes'          => 'nullable|string',
             'receipt_number' => 'nullable|string|max:100',
         ]);
@@ -78,6 +86,20 @@ class ShopController extends Controller
         }
         $shop->payments()->create($data);
         $shop->increment('paid_amount', $data['amount']);
+
+        // Save attached invoices / photos
+        $payment = $shop->payments()->latest()->first();
+        if ($request->hasFile('payment_documents')) {
+            foreach ($request->file('payment_documents') as $file) {
+                $path = $file->store('payment-docs', 'public');
+                $payment->documents()->create([
+                    'name' => $file->getClientOriginalName(),
+                    'path' => $path,
+                    'type' => in_array(strtolower($file->extension()), ['jpg','jpeg','png','gif','webp']) ? 'image' : 'document',
+                ]);
+            }
+        }
+
         return redirect()->route('shops.show', $shop)->with('success', 'Payment recorded.');
     }
 

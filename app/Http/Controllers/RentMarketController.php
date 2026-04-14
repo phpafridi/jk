@@ -50,7 +50,7 @@ class RentMarketController extends Controller
     public function storeMarket(Request $request)
     {
         $data = $request->validate([
-            'name'        => 'required|string|max:255',
+            'name'        => 'required|string|max:255|unique:rent_markets,name',
             'location'    => 'nullable|string|max:255',
             'description' => 'nullable|string',
         ]);
@@ -61,7 +61,7 @@ class RentMarketController extends Controller
     public function updateMarket(Request $request, RentMarket $rentMarket)
     {
         $data = $request->validate([
-            'name'        => 'required|string|max:255',
+            'name'        => 'required|string|max:255|unique:rent_markets,name,'.$rentMarket->id,
             'location'    => 'nullable|string|max:255',
             'description' => 'nullable|string',
         ]);
@@ -101,7 +101,13 @@ class RentMarketController extends Controller
     public function storeShop(Request $request, RentMarket $rentMarket)
     {
         $data = $request->validate([
-            'shop_number'     => 'required|string|max:255',
+            'shop_number'     => [
+                'required','string','max:255',
+                \Illuminate\Validation\Rule::unique('rent_shops','shop_number')
+                    ->where('rent_market_id', $rentMarket->id)
+                    ->whereNull('deleted_at'),
+            ],
+            'property_dealer' => 'nullable|string|max:255',
             'tenant_name'     => 'nullable|string|max:255',
             'tenant_phone'    => 'nullable|string|max:50',
             'tenant_cnic'     => 'nullable|string|max:50',
@@ -118,6 +124,7 @@ class RentMarketController extends Controller
     {
         $data = $request->validate([
             'shop_number'     => 'required|string|max:255',
+            'property_dealer' => 'nullable|string|max:255',
             'tenant_name'     => 'nullable|string|max:255',
             'tenant_phone'    => 'nullable|string|max:50',
             'tenant_cnic'     => 'nullable|string|max:50',
@@ -157,13 +164,28 @@ class RentMarketController extends Controller
             'date'           => 'required|date',
             'customer_id'    => 'nullable|exists:customers,id',
             'received_by'    => 'nullable|string|max:255',
+            'paid_to'        => 'nullable|string|max:255',
+            'authorized_by'  => 'nullable|string|max:255',
             'payment_method' => 'nullable|in:cash,bank_transfer,cheque,online,other',
             'amount_paid'    => 'nullable|numeric|min:0',
             'notes'          => 'nullable|string',
         ]);
         $data['rent_shop_id']   = $rentShop->id;
         $data['receipt_number'] = 'RNT-' . strtoupper(substr(uniqid(), -8));
-        RentEntry::create($data);
+        $entry = RentEntry::create($data);
+
+        // Save attached invoices / photos
+        if ($request->hasFile('payment_documents')) {
+            foreach ($request->file('payment_documents') as $file) {
+                $path = $file->store('payment-docs', 'public');
+                $entry->documents()->create([
+                    'name' => $file->getClientOriginalName(),
+                    'path' => $path,
+                    'type' => in_array(strtolower($file->extension()), ['jpg','jpeg','png','gif','webp']) ? 'image' : 'document',
+                ]);
+            }
+        }
+
         return redirect()->route('rent.shops.show', $rentShop)->with('success', 'Rent entry added.');
     }
 

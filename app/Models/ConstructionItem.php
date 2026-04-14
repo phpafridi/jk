@@ -4,8 +4,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class ConstructionItem extends Model
 {
-    protected $fillable = ['market_id','project_name','item_name','quantity','unit','measurement','unit_price','total','date','notes'];
+    protected $fillable = ['market_id','project_name','item_name','quantity','unit','measurement','unit_price','total','date','notes','payment_method','received_by','vendor_name'];
     protected $casts    = ['date' => 'date', 'quantity' => 'decimal:2', 'unit_price' => 'decimal:2', 'total' => 'decimal:2'];
 
     public function market() { return $this->belongsTo(Market::class); }
+    public function documents() { return $this->hasMany(ConstructionDocument::class); }
 }

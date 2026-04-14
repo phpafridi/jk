@@ -243,6 +243,10 @@
                             <input type="hidden" name="seller_customer_id" id="sell-seller-cust-id">
                             <div id="sell-seller-cust-dd" class="hidden absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto"></div>
                         </div>
+                        <button type="button" onclick="openCreateCustomerModal('seller')"
+                                class="mt-1.5 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                            <i class="fas fa-plus-circle"></i> Create New Seller Customer
+                        </button>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -276,6 +280,10 @@
                             <input type="hidden" name="buyer_customer_id" id="sell-buyer-cust-id">
                             <div id="sell-buyer-cust-dd" class="hidden absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto"></div>
                         </div>
+                        <button type="button" onclick="openCreateCustomerModal('buyer')"
+                                class="mt-1.5 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                            <i class="fas fa-plus-circle"></i> Create New Buyer Customer
+                        </button>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -317,6 +325,16 @@
                             <label class="block text-xs font-medium text-slate-600 mb-1">Received By</label>
                             <input type="text" name="received_by"
                                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="Name">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Paid To / Vendor</label>
+                            <input type="text" name="paid_to"
+                                   class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="Recipient name">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Authorized By</label>
+                            <input type="text" name="authorized_by"
+                                   class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="Authorizing person">
                         </div>
                     </div>
                 </div>
@@ -430,5 +448,108 @@
                 dd.classList.add('hidden');
         });
     });
+    </script>
+
+    {{-- Create New Customer Modal (for buyer/seller) --}}
+    <div id="modal-create-customer" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl">
+                <h3 class="font-semibold text-slate-800" id="create-cust-title"><i class="fas fa-user-plus text-indigo-500 mr-2"></i>Create New Customer</h3>
+                <button onclick="closeCreateCustomerModal()" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-3">
+                <input type="hidden" id="create-cust-role">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
+                    <input type="text" id="new-cust-name" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Full name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                    <input type="text" id="new-cust-phone" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Phone number">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">CNIC</label>
+                    <input type="text" id="new-cust-cnic" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="00000-0000000-0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Father Name</label>
+                    <input type="text" id="new-cust-father" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Father / husband name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                    <input type="text" id="new-cust-address" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Address">
+                </div>
+                <p id="create-cust-error" class="text-red-600 text-sm hidden"></p>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeCreateCustomerModal()" class="flex-1 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+                    <button type="button" onclick="saveNewCustomer()" class="flex-1 py-2.5 rounded-xl btn-primary text-white text-sm font-medium">
+                        <i class="fas fa-save mr-1"></i> Save Customer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openCreateCustomerModal(role) {
+        document.getElementById('create-cust-role').value = role;
+        document.getElementById('create-cust-title').innerHTML =
+            '<i class="fas fa-user-plus text-indigo-500 mr-2"></i>Create New ' + (role === 'buyer' ? 'Buyer' : 'Seller') + ' Customer';
+        ['name','phone','cnic','father','address'].forEach(f => document.getElementById('new-cust-'+f).value = '');
+        document.getElementById('create-cust-error').classList.add('hidden');
+        document.getElementById('modal-create-customer').classList.remove('hidden');
+        setTimeout(() => document.getElementById('new-cust-name').focus(), 100);
+    }
+    function closeCreateCustomerModal() {
+        document.getElementById('modal-create-customer').classList.add('hidden');
+    }
+    function saveNewCustomer() {
+        const name = document.getElementById('new-cust-name').value.trim();
+        if (!name) {
+            const err = document.getElementById('create-cust-error');
+            err.textContent = 'Name is required.';
+            err.classList.remove('hidden');
+            return;
+        }
+        const role = document.getElementById('create-cust-role').value;
+        fetch('{{ route("customers.store") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                name:        name,
+                phone:       document.getElementById('new-cust-phone').value.trim(),
+                cnic:        document.getElementById('new-cust-cnic').value.trim(),
+                father_name: document.getElementById('new-cust-father').value.trim(),
+                address:     document.getElementById('new-cust-address').value.trim(),
+            })
+        })
+        .then(r => r.json())
+        .then(c => {
+            if (c.errors || c.message) {
+                const err = document.getElementById('create-cust-error');
+                err.textContent = c.message || Object.values(c.errors).flat().join(' ');
+                err.classList.remove('hidden');
+                return;
+            }
+            // Add to local dataset so it shows in search immediately
+            sellCustomers.push({ id: c.id, name: c.name, phone: c.phone ?? '', cnic: c.cnic ?? '' });
+            // Auto-pick into the right role
+            const ddId     = role === 'buyer' ? 'sell-buyer-cust-dd'  : 'sell-seller-cust-dd';
+            const hiddenId = role === 'buyer' ? 'sell-buyer-cust-id'  : 'sell-seller-cust-id';
+            const inputId  = role === 'buyer' ? 'sell-buyer-cust-search' : 'sell-seller-cust-search';
+            pickPerson(ddId, hiddenId, inputId, c.id, c.name, c.phone ?? '', c.cnic ?? '', role);
+            closeCreateCustomerModal();
+        })
+        .catch(() => {
+            document.getElementById('create-cust-error').textContent = 'Failed to save. Please try again.';
+            document.getElementById('create-cust-error').classList.remove('hidden');
+        });
+    }
     </script>
 </x-app-layout>
