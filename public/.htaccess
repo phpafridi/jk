@@ -23,3 +23,16 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# ── PWA: serve manifest and sw.js with correct MIME types ─────────────
+<IfModule mod_headers.c>
+    <FilesMatch "manifest\.json$">
+        Header set Content-Type "application/manifest+json"
+        Header set Cache-Control "no-store"
+    </FilesMatch>
+    <FilesMatch "sw\.js$">
+        Header set Content-Type "application/javascript"
+        Header set Cache-Control "no-store"
+        Header set Service-Worker-Allowed "/"
+    </FilesMatch>
+</IfModule>

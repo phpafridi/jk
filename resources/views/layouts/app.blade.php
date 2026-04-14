@@ -15,6 +15,7 @@
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
 
     <title>{{ $title ?? config('app.name', 'JK') }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet" />
@@ -367,33 +368,39 @@ if ('serviceWorker' in navigator) {
 let _deferredPrompt = null;
 
 function _updateSidebarInstallBtn() {
-    const section  = document.getElementById('sidebar-install-section');
-    const btn      = document.getElementById('sidebar-install-btn');
-    const iosDiv   = document.getElementById('sidebar-install-ios');
-    const isIos    = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const section   = document.getElementById('sidebar-install-section');
+    const btn       = document.getElementById('sidebar-install-btn');
+    const iosDiv    = document.getElementById('sidebar-install-ios');
+    const isIos     = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isAndroid = /android/i.test(navigator.userAgent);
     const isStandalone = window.navigator.standalone === true
                       || window.matchMedia('(display-mode: standalone)').matches;
 
-    // Only show on Android or iOS, and only if not already installed
+    // Hide everything if already installed or not on mobile
     if (isStandalone || (!isIos && !isAndroid)) return;
 
+    // Always show the section on mobile
+    if (section) section.style.display = 'block';
+
     if (isIos) {
-        if (section) section.style.display = 'block';
-        if (iosDiv)  iosDiv.style.display  = 'block';
-    } else if (isAndroid && _deferredPrompt) {
-        if (section) section.style.display = 'block';
-        if (btn)     btn.style.display     = 'flex';
+        if (iosDiv) iosDiv.style.display = 'block';
+    } else {
+        // Android: always show button; clicking will prompt if available
+        if (btn) btn.style.display = 'flex';
     }
 }
 
 function sidebarInstallClick() {
-    if (!_deferredPrompt) return;
-    _deferredPrompt.prompt();
-    _deferredPrompt.userChoice.then(() => {
-        _deferredPrompt = null;
-        document.getElementById('sidebar-install-section')?.remove();
-    });
+    if (_deferredPrompt) {
+        _deferredPrompt.prompt();
+        _deferredPrompt.userChoice.then(() => {
+            _deferredPrompt = null;
+            document.getElementById('sidebar-install-section')?.remove();
+        });
+    } else {
+        // Prompt not available yet — show browser tip
+        alert('To install: tap the browser menu (⋮) and choose "Add to Home Screen".');
+    }
 }
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -413,13 +420,14 @@ window.addEventListener('appinstalled', () => {
     _deferredPrompt = null;
 });
 
+// ── Always show install button on mobile (Android & iOS) on load ─────
+document.addEventListener('DOMContentLoaded', _updateSidebarInstallBtn);
+
 // ── iOS Safari: no beforeinstallprompt, show manual instructions ──────
 (function () {
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isInStandalone = window.navigator.standalone === true;
-    if (isInStandalone) return;
-    // Show sidebar iOS hint always (not just once)
-    if (isIos) setTimeout(_updateSidebarInstallBtn, 500);
+    _updateSidebarInstallBtn();
     if (!isIos || isInStandalone) return;
     const dismissed = localStorage.getItem('pwa-ios-dismissed');
     if (dismissed && Date.now() - dismissed < 3 * 24 * 60 * 60 * 1000) return;

@@ -22,7 +22,9 @@ Route::get('/', function () {
 // ── PWA – served by Laravel so APP_URL is always correct ─────────────
 Route::get('/manifest.json', function () {
     $base  = rtrim(config('app.url'), '/');
-    $asset = fn($path) => asset($path); // resolves to public/ correctly
+    // Use $base for assets so icons resolve correctly in subfolders (e.g. /jkdemo/public/)
+
+    $asset = fn($path) => $base . '/' . ltrim($path, '/'); // always uses APP_URL as base
     return response()->json([
         'name'             => config('app.name', 'PropManager') . ' - Property Management',
         'short_name'       => config('app.name', 'PropManager'),
