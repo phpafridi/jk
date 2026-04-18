@@ -23,7 +23,7 @@
                 <p class="text-rose-200 text-sm mt-1"><i class="fas fa-map-marker-alt mr-1"></i>{{ $market->name }}</p>
                 @endif
             </div>
-            <div class="flex gap-3">
+            <div class="flex gap-3 flex-wrap">
                 <div class="bg-white/20 backdrop-blur rounded-xl px-4 py-3 text-center">
                     <p class="text-xs text-rose-200">Total Items</p>
                     <p class="text-xl font-bold">{{ $items->total() }}</p>
@@ -32,6 +32,18 @@
                     <p class="text-xs text-rose-200">Total Spent</p>
                     <p class="text-xl font-bold">Rs {{ number_format($total, 0) }}</p>
                 </div>
+                {{-- Print Receipt --}}
+                <button onclick="printConstructionReceipt()"
+                        class="bg-white/20 hover:bg-white/30 backdrop-blur rounded-xl px-4 py-3 text-center transition-colors flex flex-col items-center gap-1">
+                    <i class="fas fa-print text-lg"></i>
+                    <span class="text-xs">Print</span>
+                </button>
+                {{-- WhatsApp Share --}}
+                <button onclick="shareConstructionOnWhatsApp()"
+                        class="bg-green-500/80 hover:bg-green-600 backdrop-blur rounded-xl px-4 py-3 text-center transition-colors flex flex-col items-center gap-1">
+                    <i class="fab fa-whatsapp text-lg"></i>
+                    <span class="text-xs">Share</span>
+                </button>
             </div>
         </div>
     </div>
@@ -48,7 +60,7 @@
         @endcan
     </div>
 
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" id="construction-table">
         @if($items->isEmpty())
         <div class="p-12 text-center">
             <i class="fas fa-box-open text-slate-300 text-5xl mb-3"></i>
@@ -77,8 +89,28 @@
                             <p class="font-medium text-slate-800">{{ $item->item_name }}</p>
                             @if($item->notes)<p class="text-xs text-slate-400 mt-0.5">{{ $item->notes }}</p>@endif
                         </td>
-                        <td class="px-5 py-3 text-right text-slate-600">{{ number_format($item->quantity, 2) }}</td>
-                        <td class="px-5 py-3 text-slate-500">{{ $item->unit }}</td>
+                        <td class="px-5 py-3 text-right text-slate-600">
+                            {{ number_format($item->quantity, 2) }}
+                            @if($item->unit === 'sarya')
+                            @php
+                                // Parse measurement for sarya: format "DIA_MM x LENGTH_FT"
+                                // e.g. "12mm x 40ft"
+                                preg_match('/(\d+\.?\d*)\s*mm?\s*[xX×]\s*(\d+\.?\d*)/i', $item->measurement ?? '', $sarM);
+                                $saryaDia = isset($sarM[1]) ? (float)$sarM[1] : 0;
+                                $saryaLen = isset($sarM[2]) ? (float)$sarM[2] : 0;
+                                $weightPerRod = $saryaDia > 0 && $saryaLen > 0
+                                    ? round(($saryaDia * $saryaDia * $saryaLen * 0.3048) / 162, 2)
+                                    : 0;
+                                $totalWeight = round($item->quantity * $weightPerRod, 2);
+                            @endphp
+                            @if($totalWeight > 0)
+                            <p class="text-xs text-rose-500 mt-0.5">≈ {{ $totalWeight }} kg</p>
+                            @endif
+                            @endif
+                        </td>
+                        <td class="px-5 py-3 text-slate-500">
+                            {{ $item->unit === 'sarya' ? '🔩 Sarya' : $item->unit }}
+                        </td>
                         <td class="px-5 py-3 text-slate-500 text-xs">{{ $item->measurement ?? '—' }}</td>
                         <td class="px-5 py-3 text-right text-slate-600">Rs {{ number_format($item->unit_price, 0) }}</td>
                         <td class="px-5 py-3 text-right font-bold text-rose-600">Rs {{ number_format($item->total, 0) }}</td>
@@ -99,7 +131,19 @@
                             @endif
                         </td>
                         <td class="px-5 py-3 text-slate-500 whitespace-nowrap text-xs">{{ $item->date->format('d M Y') }}</td>
-                        <td class="px-5 py-3 text-right">
+                        <td class="px-5 py-3 text-right flex items-center gap-1 justify-end">
+                            {{-- Print receipt for single item --}}
+                            <button type="button"
+                                    onclick="printItemReceipt('{{ addslashes($projectName) }}','{{ addslashes($item->item_name) }}','{{ $item->quantity }}','{{ $item->unit }}','{{ number_format($item->unit_price,0) }}','{{ number_format($item->total,0) }}','{{ $item->date->format('d M Y') }}','{{ addslashes($item->vendor_name ?? '') }}')"
+                                    class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                                <i class="fas fa-print text-xs"></i>
+                            </button>
+                            {{-- WhatsApp share for single item --}}
+                            <button type="button"
+                                    onclick="shareItemOnWhatsApp('{{ addslashes($projectName) }}','{{ addslashes($item->item_name) }}','{{ $item->quantity }}','{{ $item->unit }}','{{ number_format($item->unit_price,0) }}','{{ number_format($item->total,0) }}','{{ $item->date->format('d M Y') }}','{{ addslashes($item->vendor_name ?? '') }}')"
+                                    class="text-green-500 hover:text-green-700 p-1.5 rounded-lg hover:bg-green-50 transition-colors">
+                                <i class="fab fa-whatsapp text-xs"></i>
+                            </button>
                             @can('manage construction')
                             <form method="POST" action="{{ route('construction.destroy', $item) }}" onsubmit="return confirm('Delete item?')">
                                 @csrf @method('DELETE')
@@ -167,7 +211,8 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Unit *</label>
-                        <select name="unit" required class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <select name="unit" id="edit-unit" required onchange="onUnitChange()"
+                                class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
                             <option value="sqft">Sqft</option>
                             <option value="meters">Meters</option>
                             <option value="kg">Kg</option>
@@ -176,17 +221,28 @@
                             <option value="tons">Tons</option>
                             <option value="liters">Liters</option>
                             <option value="days">Days</option>
+                            <option value="sarya">🔩 Sarya (Steel Rods)</option>
                             <option value="other">Other</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Measurement</label>
-                        <input type="text" name="measurement" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500" placeholder="e.g. 10x20">
+                        <label class="block text-sm font-medium text-slate-700 mb-1" id="measure-label">Measurement</label>
+                        <input type="text" name="measurement" id="edit-measurement" oninput="calcEditTotal()"
+                               class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500" placeholder="e.g. 10x20">
                     </div>
                 </div>
+
+                {{-- Sarya helper info box (hidden by default) --}}
+                <div id="sarya-info-box" class="hidden bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-800 space-y-1">
+                    <p class="font-semibold">🔩 Sarya (Steel Rod) Calculation</p>
+                    <p>Qty = Number of rods &nbsp;|&nbsp; Measurement = <strong>DIAxLEN</strong> e.g. <code class="bg-rose-100 px-1 rounded">12x40</code> (12mm dia × 40ft length)</p>
+                    <p>Formula: Weight/rod = (Dia² × Length_m) ÷ 162 &nbsp;·&nbsp; Unit Price = Price per kg (Rs)</p>
+                    <p id="sarya-calc-preview" class="font-medium text-rose-700"></p>
+                </div>
+
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Unit Price (Rs) *</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1" id="price-label">Unit Price (Rs) *</label>
                         <input type="number" name="unit_price" id="edit-price" required min="0" step="0.01"
                                oninput="calcEditTotal()" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500" placeholder="0">
                     </div>
@@ -262,12 +318,53 @@
     </div>
     @endcan
 
+    {{-- Hidden print receipt template --}}
+    <div id="print-receipt-area" class="hidden">
+        <div id="print-receipt-content"></div>
+    </div>
+
     <script>
+    // ─── Sarya / Unit change logic ────────────────────────────────────
+    function onUnitChange() {
+        const unit = document.getElementById('edit-unit').value;
+        const isSarya = unit === 'sarya';
+        document.getElementById('sarya-info-box').classList.toggle('hidden', !isSarya);
+        document.getElementById('measure-label').textContent = isSarya ? 'Dia×Length (mm×ft)' : 'Measurement';
+        document.getElementById('price-label').textContent   = isSarya ? 'Price per Kg (Rs) *' : 'Unit Price (Rs) *';
+        document.getElementById('edit-measurement').placeholder = isSarya ? '12x40 (12mm × 40ft)' : 'e.g. 10x20';
+        calcEditTotal();
+    }
+
     function calcEditTotal() {
+        const unit  = document.getElementById('edit-unit').value;
         const qty   = parseFloat(document.getElementById('edit-qty').value)   || 0;
         const price = parseFloat(document.getElementById('edit-price').value) || 0;
-        document.getElementById('edit-total').value = (qty * price).toFixed(2);
+        let total   = 0;
+
+        if (unit === 'sarya') {
+            // Parse measurement: "DIA x LEN" e.g. "12x40" (mm x ft)
+            const meas = document.getElementById('edit-measurement').value;
+            const parts = meas.match(/(\d+\.?\d*)\s*[xX×]\s*(\d+\.?\d*)/);
+            if (parts) {
+                const dia = parseFloat(parts[1]);   // mm
+                const len = parseFloat(parts[2]);   // feet → convert to meters (*0.3048)
+                const weightPerRod = (dia * dia * len * 0.3048) / 162;
+                const totalWeight  = qty * weightPerRod;
+                total = totalWeight * price;
+
+                document.getElementById('sarya-calc-preview').textContent =
+                    '⚖️ Weight/rod ≈ ' + weightPerRod.toFixed(2) + ' kg  |  '
+                    + 'Total weight ≈ ' + totalWeight.toFixed(2) + ' kg  |  '
+                    + 'Total cost ≈ Rs ' + Math.round(total).toLocaleString();
+            }
+        } else {
+            total = qty * price;
+        }
+
+        document.getElementById('edit-total').value = total > 0 ? total.toFixed(2) : '';
     }
+
+    // ─── File label helpers ───────────────────────────────────────────
     function updateConstFileLabel(input) {
         const label = document.getElementById('const-file-label');
         const icon  = document.getElementById('const-upload-icon');
@@ -284,6 +381,90 @@
             icon.classList.remove('text-rose-400');
             icon.classList.add('text-slate-300');
         }
+    }
+
+    // ─── Print full project receipt ───────────────────────────────────
+    function printConstructionReceipt() {
+        const table = document.getElementById('construction-table');
+        const w = window.open('', '_blank', 'width=900,height=700');
+        w.document.write(`
+            <html><head><title>{{ $projectName }} — Receipt</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
+                h1 { font-size: 20px; margin-bottom: 4px; }
+                p.sub { color: #64748b; font-size: 13px; margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                th { background: #f1f5f9; padding: 8px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+                td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+                tfoot td { font-weight: bold; background: #f8fafc; border-top: 2px solid #e2e8f0; }
+                .footer { margin-top: 30px; font-size: 12px; color: #94a3b8; text-align: center; }
+            </style></head><body>
+            <h1>🏗️ {{ $projectName }}</h1>
+            <p class="sub">{{ $market ? $market->name : '' }} &nbsp;|&nbsp; Total: Rs {{ number_format($total, 0) }} &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-PK')}</p>
+            ${table.querySelector('table') ? table.querySelector('table').outerHTML : '<p>No items.</p>'}
+            <div class="footer">Generated by PropManager</div>
+            </body></html>
+        `);
+        w.document.close();
+        setTimeout(() => w.print(), 600);
+    }
+
+    // ─── Print single item receipt ────────────────────────────────────
+    function printItemReceipt(project, item, qty, unit, price, total, date, vendor) {
+        const w = window.open('', '_blank', 'width=600,height=500');
+        w.document.write(`
+            <html><head><title>Receipt — ${item}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 30px; max-width: 400px; margin: auto; color: #1e293b; }
+                h2 { font-size: 18px; text-align:center; margin-bottom: 5px; }
+                .sub { text-align:center; color:#64748b; font-size:12px; margin-bottom:20px; }
+                table { width:100%; border-collapse:collapse; font-size:13px; }
+                td { padding:8px 0; border-bottom:1px solid #f1f5f9; }
+                td:last-child { text-align:right; font-weight:600; }
+                .total-row td { font-weight:bold; font-size:16px; color:#e11d48; border-top:2px solid #e2e8f0; }
+                .footer { text-align:center; color:#94a3b8; font-size:11px; margin-top:20px; }
+            </style></head><body>
+            <h2>🏗️ ${project}</h2>
+            <div class="sub">Construction Receipt</div>
+            <table>
+                <tr><td>Item</td><td>${item}</td></tr>
+                <tr><td>Quantity</td><td>${qty} ${unit}</td></tr>
+                <tr><td>Unit Price</td><td>Rs ${price}</td></tr>
+                <tr><td>Date</td><td>${date}</td></tr>
+                ${vendor ? `<tr><td>Vendor</td><td>${vendor}</td></tr>` : ''}
+                <tr class="total-row"><td>Total Amount</td><td>Rs ${total}</td></tr>
+            </table>
+            <div class="footer">Printed ${new Date().toLocaleDateString('en-PK')}</div>
+            </body></html>
+        `);
+        w.document.close();
+        setTimeout(() => w.print(), 500);
+    }
+
+    // ─── WhatsApp share — full project ────────────────────────────────
+    function shareConstructionOnWhatsApp() {
+        let text = '🏗️ *{{ $projectName }}*\n';
+        @if($market) text += '📍 {{ $market->name }}\n'; @endif
+        text += '💰 Total Spent: Rs {{ number_format($total, 0) }}\n';
+        text += '📦 Items: {{ $items->total() }}\n';
+        text += '📅 Date: ' + new Date().toLocaleDateString('en-PK') + '\n\n';
+        text += '--- Items ---\n';
+        @foreach($items as $item)
+        text += '• {{ addslashes($item->item_name) }}: {{ $item->quantity }} {{ $item->unit }} @ Rs {{ number_format($item->unit_price,0) }} = Rs {{ number_format($item->total,0) }}\n';
+        @endforeach
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+
+    // ─── WhatsApp share — single item ─────────────────────────────────
+    function shareItemOnWhatsApp(project, item, qty, unit, price, total, date, vendor) {
+        let text = `🏗️ *${project}*\n`;
+        text += `📦 Item: ${item}\n`;
+        text += `🔢 Qty: ${qty} ${unit}\n`;
+        text += `💵 Unit Price: Rs ${price}\n`;
+        text += `💰 Total: Rs ${total}\n`;
+        text += `📅 Date: ${date}\n`;
+        if (vendor) text += `🏪 Vendor: ${vendor}\n`;
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
     }
     </script>
 </x-app-layout>

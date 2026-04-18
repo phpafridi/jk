@@ -124,6 +124,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/sell-purchase/{entry}',                   [SellPurchaseController::class, 'destroy'])->name('sell.destroy')->middleware('can:manage sell purchase');
     Route::post('/sell-purchase/{entry}/documents',           [SellPurchaseController::class, 'uploadDocument'])->name('sell.documents.store')->middleware('can:manage sell purchase');
     Route::delete('/sell-purchase-documents/{document}',      [SellPurchaseController::class, 'deleteDocument'])->name('sell.documents.destroy')->middleware('can:manage sell purchase');
+    Route::post('/sell-purchase/{entry}/payments',            [SellPurchaseController::class, 'addPayment'])->name('sell.payments.store')->middleware('can:manage sell purchase');
+    Route::delete('/sell-purchase-payments/{payment}',        [SellPurchaseController::class, 'deletePayment'])->name('sell.payments.destroy')->middleware('can:manage sell purchase');
 
     // Sell Markets (managed from WITHIN sell/purchase, no separate nav item needed)
     Route::get('/sell-markets',                          [SellMarketController::class, 'index'])->name('sell.markets.index')->middleware('can:view sell purchase');

@@ -29,4 +29,5 @@ class SellPurchaseEntry extends Model
     public function buyerCustomer()   { return $this->belongsTo(Customer::class, 'buyer_customer_id'); }
     public function sellerOwner()     { return $this->belongsTo(Owner::class, 'seller_owner_id'); }
     public function buyerOwner()      { return $this->belongsTo(Owner::class, 'buyer_owner_id'); }
+    public function payments()        { return $this->hasMany(SellPurchasePayment::class); }
 }

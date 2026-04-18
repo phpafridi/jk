@@ -37,6 +37,26 @@ class CustomerController extends Controller
             'cnic'        => 'nullable|string|max:20',
             'address'     => 'nullable|string',
         ]);
+
+        // Check for duplicate CNIC across customers and owners (ignore blank CNICs)
+        if (!empty($data['cnic'])) {
+            $existingCustomer = Customer::where('cnic', $data['cnic'])->first();
+            if ($existingCustomer) {
+                return response()->json([
+                    'error'   => 'duplicate_cnic',
+                    'message' => 'A customer with CNIC "' . $data['cnic'] . '" already exists: ' . $existingCustomer->name . '. Please search and select them instead.',
+                ], 422);
+            }
+
+            $existingOwner = \App\Models\Owner::where('cnic', $data['cnic'])->first();
+            if ($existingOwner) {
+                return response()->json([
+                    'error'   => 'duplicate_cnic',
+                    'message' => 'An owner with CNIC "' . $data['cnic'] . '" already exists: ' . $existingOwner->name . '. Duplicate CNICs are not allowed.',
+                ], 422);
+            }
+        }
+
         $customer = Customer::create($data);
         return response()->json([
             'id'    => $customer->id,

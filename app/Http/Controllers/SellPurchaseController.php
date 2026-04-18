@@ -4,14 +4,16 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Owner;
 use App\Models\SellPurchaseEntry;
+use App\Models\SellPurchasePayment;
 use App\Models\SellMarket;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SellPurchaseController extends Controller
 {
     public function index()
     {
-        $query = SellPurchaseEntry::with('sellMarket');
+        $query = SellPurchaseEntry::with(['sellMarket', 'payments']);
 
         if (request('search')) {
             $s = request('search');
@@ -34,14 +36,15 @@ class SellPurchaseController extends Controller
 
     public function show(SellPurchaseEntry $entry)
     {
-        $entry->load(['sellMarket', 'documents', 'sellerCustomer', 'buyerCustomer']);
-        $remaining = max(0, (float)$entry->total - (float)($entry->amount_paid ?? 0));
-        return view('sell.show', compact('entry', 'remaining'));
+        $entry->load(['sellMarket', 'documents', 'sellerCustomer', 'buyerCustomer', 'payments']);
+        $totalPaid = $entry->payments->sum('amount') + (float)($entry->amount_paid ?? 0);
+        $remaining = max(0, (float)$entry->total - $totalPaid);
+        return view('sell.show', compact('entry', 'remaining', 'totalPaid'));
     }
 
     public function printReceipt(SellPurchaseEntry $entry)
     {
-        $entry->load(['sellMarket', 'sellerCustomer', 'buyerCustomer', 'sellerOwner', 'buyerOwner']);
+        $entry->load(['sellMarket', 'sellerCustomer', 'buyerCustomer', 'sellerOwner', 'buyerOwner', 'payments']);
         return view('sell.receipt', compact('entry'));
     }
 
@@ -97,6 +100,47 @@ class SellPurchaseController extends Controller
         return redirect()->route('sell.index')->with('success', 'Entry added.');
     }
 
+    public function addPayment(Request $request, SellPurchaseEntry $entry)
+    {
+        $data = $request->validate([
+            'amount'         => 'required|numeric|min:0.01',
+            'payment_method' => 'required|in:cash,bank_transfer,cheque,online,other',
+            'date'           => 'required|date',
+            'received_by'    => 'nullable|string|max:255',
+            'notes'          => 'nullable|string|max:500',
+            'invoice'        => 'nullable|file|max:20480|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx',
+        ]);
+
+        $payment = $entry->payments()->create([
+            'amount'         => $data['amount'],
+            'payment_method' => $data['payment_method'],
+            'date'           => $data['date'],
+            'received_by'    => $data['received_by'] ?? null,
+            'notes'          => $data['notes'] ?? null,
+        ]);
+
+        if ($request->hasFile('invoice')) {
+            $file = $request->file('invoice');
+            $path = $file->store('sell-purchase/payment-invoices', 'public');
+            $payment->update([
+                'invoice_path' => $path,
+                'invoice_name' => $file->getClientOriginalName(),
+            ]);
+        }
+
+        return redirect()->route('sell.show', $entry)->with('success', 'Payment of Rs ' . number_format($data['amount'], 0) . ' added successfully.');
+    }
+
+    public function deletePayment(SellPurchasePayment $payment)
+    {
+        $entry = $payment->entry;
+        if ($payment->invoice_path) {
+            Storage::disk('public')->delete($payment->invoice_path);
+        }
+        $payment->delete();
+        return redirect()->route('sell.show', $entry)->with('success', 'Payment deleted.');
+    }
+
     public function uploadDocument(Request $request, SellPurchaseEntry $entry)
     {
         $request->validate(['documents.*' => 'required|file|max:20480']);
@@ -114,7 +158,7 @@ class SellPurchaseController extends Controller
     public function deleteDocument(\App\Models\EntryDocument $document)
     {
         $entryId = $document->documentable_id;
-        \Illuminate\Support\Facades\Storage::disk('public')->delete($document->path);
+        Storage::disk('public')->delete($document->path);
         $document->delete();
         return redirect()->route('sell.show', $entryId)->with('success', 'Document deleted.');
     }
@@ -122,9 +166,15 @@ class SellPurchaseController extends Controller
     public function destroy(SellPurchaseEntry $entry)
     {
         foreach ($entry->documents as $doc) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($doc->path);
+            Storage::disk('public')->delete($doc->path);
             $doc->delete();
         }
+        foreach ($entry->payments as $payment) {
+            if ($payment->invoice_path) {
+                Storage::disk('public')->delete($payment->invoice_path);
+            }
+        }
+        $entry->payments()->delete();
         $entry->delete();
         return redirect()->route('sell.index')->with('success', 'Entry deleted.');
     }

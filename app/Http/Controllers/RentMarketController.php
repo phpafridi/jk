@@ -104,8 +104,7 @@ class RentMarketController extends Controller
             'shop_number'     => [
                 'required','string','max:255',
                 \Illuminate\Validation\Rule::unique('rent_shops','shop_number')
-                    ->where('rent_market_id', $rentMarket->id)
-                    ->whereNull('deleted_at'),
+                    ->where('rent_market_id', $rentMarket->id),
             ],
             'property_dealer' => 'nullable|string|max:255',
             'tenant_name'     => 'nullable|string|max:255',

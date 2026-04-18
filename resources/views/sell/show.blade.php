@@ -14,13 +14,27 @@
         $color = $colorMap[$entry->entry_type] ?? 'slate';
         $iconMap = ['shop'=>'fa-store','plot'=>'fa-map','car'=>'fa-car'];
         $icon = $iconMap[$entry->entry_type] ?? 'fa-exchange-alt';
-        $amountPaid = (float)($entry->amount_paid ?? 0);
+        $amountPaid = $totalPaid ?? ((float)($entry->amount_paid ?? 0));
         $totalAmt   = (float)$entry->total;
-        $remaining  = max(0, $totalAmt - $amountPaid);
         $paidPct    = $totalAmt > 0 ? min(100, round($amountPaid / $totalAmt * 100)) : 0;
         $pmLabels   = ['cash'=>'Cash','bank_transfer'=>'Bank Transfer','cheque'=>'Cheque','online'=>'Online','other'=>'Other'];
+        $pmIcon     = ['cash'=>'fa-money-bill-wave','bank_transfer'=>'fa-university','cheque'=>'fa-file-invoice','online'=>'fa-mobile-alt','other'=>'fa-ellipsis-h'];
+
+        // Build WhatsApp message
+        $waText  = "📋 *Sell/Purchase Entry #".$entry->id."*\n";
+        $waText .= "Type: ".ucfirst($entry->entry_type)." | ".ucfirst($entry->transaction_type)."\n";
+        $waText .= "Date: ".$entry->date->format('d M Y')."\n";
+        if($entry->sellMarket) $waText .= "Market: ".$entry->sellMarket->name."\n";
+        if($entry->shop_or_item_number) $waText .= "Shop/Plot #: ".$entry->shop_or_item_number."\n";
+        $waText .= "\n💰 *Payment Summary*\n";
+        $waText .= "Total: Rs ".number_format($totalAmt,0)."\n";
+        $waText .= "Paid: Rs ".number_format($amountPaid,0)."\n";
+        $waText .= "Remaining: Rs ".number_format($remaining,0)."\n";
+        if($entry->seller_name) $waText .= "\nSeller: ".$entry->seller_name;
+        if($entry->buyer_name)  $waText .= "\nBuyer: ".$entry->buyer_name;
     @endphp
-    <div class="bg-gradient-to-br from-{{ $color }}-600 to-{{ $color }}-800 rounded-2xl p-6 mb-6 text-white relative overflow-hidden">
+
+    <div class="bg-gradient-to-br from-{{ $color }}-600 to-{{ $color }}-800 rounded-2xl p-6 mb-6 text-black relative overflow-hidden">
         <div class="absolute inset-0 opacity-10">
             <i class="fas {{ $icon }}" style="font-size:200px;position:absolute;right:-20px;bottom:-40px;"></i>
         </div>
@@ -56,22 +70,37 @@
                 <!-- Payment progress bar -->
                 <div class="mt-3 w-64">
                     <div class="flex justify-between text-xs mb-1">
-                        <span class="text-white/80">Paid: Rs {{ number_format($amountPaid, 0) }}</span>
-                        <span class="text-white/60">{{ $paidPct }}%</span>
+                        <span class="text-black">Paid: Rs {{ number_format($amountPaid, 0) }}</span>
+                        <span class="text-black">{{ $paidPct }}%</span>
                     </div>
                     <div class="h-2 bg-white/20 rounded-full overflow-hidden">
                         <div class="h-full rounded-full {{ $remaining > 0 ? 'bg-amber-400' : 'bg-emerald-400' }}" style="width: {{ $paidPct }}%"></div>
                     </div>
                     @if($remaining > 0)
-                    <p class="text-xs text-white/70 mt-1">Remaining: Rs {{ number_format($remaining, 0) }}</p>
+                    <p class="text-xs text-black mt-1">Remaining: Rs {{ number_format($remaining, 0) }}</p>
                     @endif
                 </div>
             </div>
-            <div class="flex gap-2 shrink-0">
+            <div class="flex flex-wrap gap-2 shrink-0">
+                <!-- Print Receipt -->
                 <a href="{{ route('sell.receipt', $entry) }}" target="_blank"
                    class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors">
                     <i class="fas fa-print"></i> Receipt
                 </a>
+                <!-- WhatsApp Share -->
+                <a href="https://wa.me/?text={{ urlencode($waText) }}" target="_blank"
+                   class="flex items-center gap-2 px-4 py-2 bg-green-500/80 hover:bg-green-600 rounded-xl text-sm font-medium transition-colors">
+                    <i class="fab fa-whatsapp"></i> Share
+                </a>
+                @if($remaining > 0)
+                @can('manage sell purchase')
+                <!-- Add Remaining Payment -->
+                <button onclick="document.getElementById('modal-add-payment').classList.remove('hidden')"
+                        class="flex items-center gap-2 px-4 py-2 bg-amber-400/80 hover:bg-amber-500 rounded-xl text-sm font-medium transition-colors">
+                    <i class="fas fa-plus-circle"></i> Add Payment
+                </button>
+                @endcan
+                @endif
                 @can('manage sell purchase')
                 <form method="POST" action="{{ route('sell.destroy', $entry) }}" onsubmit="return confirm('Delete this entry?')">
                     @csrf @method('DELETE')
@@ -104,9 +133,6 @@
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-center">
             <p class="text-xs text-slate-500 mb-1">Payment Method</p>
             <p class="text-sm font-semibold text-slate-700 flex items-center justify-center gap-1">
-                @php
-                    $pmIcon = ['cash'=>'fa-money-bill-wave','bank_transfer'=>'fa-university','cheque'=>'fa-file-invoice','online'=>'fa-mobile-alt','other'=>'fa-ellipsis-h'];
-                @endphp
                 <i class="fas {{ $pmIcon[$entry->payment_method ?? 'cash'] ?? 'fa-money-bill-wave' }} text-indigo-500"></i>
                 {{ $pmLabels[$entry->payment_method ?? 'cash'] ?? 'Cash' }}
             </p>
@@ -227,6 +253,127 @@
         @endif
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- PAYMENT HISTORY                                                 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <i class="fas fa-history text-emerald-600 text-xs"></i>
+                </span>
+                Payment History
+                <span class="ml-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                    {{ 1 + $entry->payments->count() }} payment(s)
+                </span>
+            </h3>
+            @if($remaining > 0)
+            @can('manage sell purchase')
+            <button onclick="document.getElementById('modal-add-payment').classList.remove('hidden')"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm">
+                <i class="fas fa-plus-circle"></i> Add Remaining Payment
+            </button>
+            @endcan
+            @endif
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-100 bg-slate-50">
+                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
+                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                        <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Method</th>
+                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Received By</th>
+                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Invoice</th>
+                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Notes</th>
+                        <th class="px-4 py-2.5"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {{-- Initial / first payment row --}}
+                    @if($entry->amount_paid > 0)
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3">
+                            <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Initial</span>
+                        </td>
+                        <td class="px-4 py-3 text-slate-600 whitespace-nowrap">{{ $entry->date->format('d M Y') }}</td>
+                        <td class="px-4 py-3 text-right font-bold text-emerald-700">Rs {{ number_format($entry->amount_paid, 0) }}</td>
+                        <td class="px-4 py-3 text-slate-600">
+                            <i class="fas {{ $pmIcon[$entry->payment_method ?? 'cash'] ?? 'fa-money-bill-wave' }} text-indigo-400 mr-1"></i>
+                            {{ $pmLabels[$entry->payment_method ?? 'cash'] ?? 'Cash' }}
+                        </td>
+                        <td class="px-4 py-3 text-slate-500">{{ $entry->received_by ?: '—' }}</td>
+                        <td class="px-4 py-3 text-slate-400 text-xs">—</td>
+                        <td class="px-4 py-3 text-slate-400 text-xs">{{ $entry->notes ?: '—' }}</td>
+                        <td class="px-4 py-3"></td>
+                    </tr>
+                    @endif
+
+                    {{-- Additional payment rows --}}
+                    @forelse($entry->payments->sortBy('date') as $idx => $payment)
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3">
+                            <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Installment {{ $idx + 1 }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-slate-600 whitespace-nowrap">{{ $payment->date->format('d M Y') }}</td>
+                        <td class="px-4 py-3 text-right font-bold text-emerald-700">Rs {{ number_format($payment->amount, 0) }}</td>
+                        <td class="px-4 py-3 text-slate-600">
+                            <i class="fas {{ $pmIcon[$payment->payment_method ?? 'cash'] ?? 'fa-money-bill-wave' }} text-indigo-400 mr-1"></i>
+                            {{ $pmLabels[$payment->payment_method ?? 'cash'] ?? 'Cash' }}
+                        </td>
+                        <td class="px-4 py-3 text-slate-500">{{ $payment->received_by ?: '—' }}</td>
+                        <td class="px-4 py-3">
+                            @if($payment->invoice_path)
+                            <a href="{{ asset('storage/'.$payment->invoice_path) }}" target="_blank"
+                               class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-0.5 rounded-lg">
+                                <i class="fas fa-image text-xs"></i> View
+                            </a>
+                            @else
+                            <span class="text-slate-300 text-xs">—</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-slate-400 text-xs">{{ $payment->notes ?: '—' }}</td>
+                        <td class="px-4 py-3 text-right">
+                            @can('manage sell purchase')
+                            <form method="POST" action="{{ route('sell.payments.destroy', $payment) }}" onsubmit="return confirm('Delete this payment?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </form>
+                            @endcan
+                        </td>
+                    </tr>
+                    @empty
+                    @if($entry->amount_paid <= 0)
+                    <tr>
+                        <td colspan="8" class="px-4 py-8 text-center text-slate-400 text-sm">
+                            <i class="fas fa-receipt text-2xl mb-2 block"></i>No payments recorded yet.
+                        </td>
+                    </tr>
+                    @endif
+                    @endforelse
+                </tbody>
+                <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+                    <tr>
+                        <td colspan="2" class="px-4 py-3 text-xs font-semibold text-slate-600">Total Paid</td>
+                        <td class="px-4 py-3 text-right font-bold text-emerald-700">Rs {{ number_format($amountPaid, 0) }}</td>
+                        <td colspan="5"></td>
+                    </tr>
+                    @if($remaining > 0)
+                    <tr>
+                        <td colspan="2" class="px-4 py-2 text-xs font-semibold text-amber-600">Still Remaining</td>
+                        <td class="px-4 py-2 text-right font-bold text-amber-700">Rs {{ number_format($remaining, 0) }}</td>
+                        <td colspan="5"></td>
+                    </tr>
+                    @endif
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
     <!-- Documents / Receipts -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
         <div class="flex items-center justify-between mb-4">
@@ -268,7 +415,7 @@
         @can('manage sell purchase')
         <form method="POST" action="{{ route('sell.documents.store', $entry) }}" enctype="multipart/form-data" class="mt-5 pt-5 border-t border-slate-100 space-y-3">
             @csrf
-            <p class="text-xs font-semibold text-slate-600">Upload More Files</p>
+            <p class="text-xs font-semibold text-slate-600">Upload Invoice / Document</p>
             <select name="doc_type" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
                 <option value="cnic">🪪 CNIC</option>
                 <option value="mou">🤝 MOU</option>
@@ -290,6 +437,100 @@
         </form>
         @endcan
     </div>
+
+    {{-- ═══════════════════════════════════════════════════════ --}}
+    {{-- ADD PAYMENT MODAL                                       --}}
+    {{-- ═══════════════════════════════════════════════════════ --}}
+    @can('manage sell purchase')
+    <div id="modal-add-payment" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="flex items-center justify-between p-5 border-b border-slate-100">
+                <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-plus-circle text-amber-500"></i>
+                    Add Remaining Payment
+                </h3>
+                <button onclick="document.getElementById('modal-add-payment').classList.add('hidden')"
+                        class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('sell.payments.store', $entry) }}" enctype="multipart/form-data" class="p-5 space-y-4">
+                @csrf
+
+                <!-- Remaining balance hint -->
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
+                    <span class="text-sm text-amber-700 font-medium">Still Remaining:</span>
+                    <span class="text-lg font-bold text-amber-800">Rs {{ number_format($remaining, 0) }}</span>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Amount (Rs) *</label>
+                    <input type="number" name="amount" required min="0.01" step="0.01"
+                           max="{{ $remaining }}"
+                           value="{{ $remaining }}"
+                           class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                           placeholder="Amount being paid now">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method *</label>
+                        <select name="payment_method" required class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="cash">💵 Cash</option>
+                            <option value="bank_transfer">🏦 Bank Transfer</option>
+                            <option value="cheque">📃 Cheque</option>
+                            <option value="online">📱 Online</option>
+                            <option value="other">📎 Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                        <input type="date" name="date" required value="{{ date('Y-m-d') }}"
+                               class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Received By</label>
+                    <input type="text" name="received_by"
+                           class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                           placeholder="Name of person who received the payment">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                    <input type="text" name="notes"
+                           class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                           placeholder="Any notes about this payment">
+                </div>
+
+                <!-- Invoice Image Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        <i class="fas fa-image text-amber-400 mr-1"></i>Attach Invoice / Receipt Image
+                    </label>
+                    <div class="border-2 border-dashed border-slate-200 rounded-xl p-3 text-center hover:border-amber-400 transition-colors cursor-pointer"
+                         onclick="document.getElementById('pay-invoice-upload').click()">
+                        <input type="file" id="pay-invoice-upload" name="invoice"
+                               accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+                               class="hidden" onchange="updatePayInvoiceLabel(this)">
+                        <i class="fas fa-paperclip text-slate-300 text-lg mb-0.5 block" id="pay-invoice-icon"></i>
+                        <span id="pay-invoice-label" class="text-xs text-slate-500">Click to attach invoice photo</span>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-1">
+                    <button type="button" onclick="document.getElementById('modal-add-payment').classList.add('hidden')"
+                            class="flex-1 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">
+                        <i class="fas fa-save mr-1"></i>Save Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endcan
 
     {{-- Delete Confirm Modal --}}
     <div id="modal-delete-doc" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
@@ -317,6 +558,7 @@
         </div>
     </div>
     <form id="delete-doc-form" method="POST" class="hidden">@csrf @method('DELETE')</form>
+
     <script>
         let deleteActionUrl = '';
         function openDeleteModal(url, name) {
@@ -333,6 +575,7 @@
             document.getElementById('delete-doc-form').submit();
         }
         document.getElementById('modal-delete-doc').addEventListener('click', function(e) { if (e.target === this) closeDeleteModal(); });
+        document.getElementById('modal-add-payment')?.addEventListener('click', function(e) { if (e.target === this) this.classList.add('hidden'); });
 
         function updateSellFileLabel(input) {
             const label = document.getElementById('sell-file-label');
@@ -348,6 +591,24 @@
                 label.classList.remove('text-indigo-600','font-semibold');
                 label.classList.add('text-slate-500');
                 icon.classList.remove('text-indigo-400');
+                icon.classList.add('text-slate-300');
+            }
+        }
+
+        function updatePayInvoiceLabel(input) {
+            const label = document.getElementById('pay-invoice-label');
+            const icon  = document.getElementById('pay-invoice-icon');
+            if (input.files.length > 0) {
+                label.textContent = input.files[0].name;
+                label.classList.add('text-amber-600','font-semibold');
+                label.classList.remove('text-slate-500');
+                icon.classList.add('text-amber-400');
+                icon.classList.remove('text-slate-300');
+            } else {
+                label.textContent = 'Click to attach invoice photo';
+                label.classList.remove('text-amber-600','font-semibold');
+                label.classList.add('text-slate-500');
+                icon.classList.remove('text-amber-400');
                 icon.classList.add('text-slate-300');
             }
         }

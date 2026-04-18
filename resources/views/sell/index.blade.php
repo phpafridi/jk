@@ -72,7 +72,7 @@
                             <p class="text-xs text-slate-400">{{ $entry->buyer_phone ?? $entry->buyer_cnic ?? '' }}</p>
                         </td>
                         <td class="px-5 py-3 text-right font-bold text-slate-800">Rs {{ number_format($entry->total, 0) }}</td>
-                        @php $paid = (float)($entry->amount_paid ?? 0); $rem = max(0, (float)$entry->total - $paid); @endphp
+                        @php $paid = (float)($entry->amount_paid ?? 0) + $entry->payments->sum('amount'); $rem = max(0, (float)$entry->total - $paid); @endphp
                         <td class="px-5 py-3 text-right font-semibold text-emerald-600">Rs {{ number_format($paid, 0) }}</td>
                         <td class="px-5 py-3 text-right font-semibold {{ $rem > 0 ? 'text-amber-600' : 'text-slate-300' }}">{{ $rem > 0 ? 'Rs '.number_format($rem,0) : '—' }}</td>
                         <td class="px-5 py-3 text-slate-500 text-xs">
@@ -514,7 +514,10 @@
             return;
         }
         const role = document.getElementById('create-cust-role').value;
-        fetch('{{ route("customers.store") }}', {
+        const errEl = document.getElementById('create-cust-error');
+        errEl.classList.add('hidden');
+
+        fetch('{{ route("customers.quick-store") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -529,26 +532,27 @@
                 address:     document.getElementById('new-cust-address').value.trim(),
             })
         })
-        .then(r => r.json())
-        .then(c => {
-            if (c.errors || c.message) {
-                const err = document.getElementById('create-cust-error');
-                err.textContent = c.message || Object.values(c.errors).flat().join(' ');
-                err.classList.remove('hidden');
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok) {
+                // Handle duplicate CNIC or validation errors
+                const msg = data.message || (data.errors ? Object.values(data.errors).flat().join(' ') : 'Failed to save. Please try again.');
+                errEl.textContent = msg;
+                errEl.classList.remove('hidden');
                 return;
             }
             // Add to local dataset so it shows in search immediately
-            sellCustomers.push({ id: c.id, name: c.name, phone: c.phone ?? '', cnic: c.cnic ?? '' });
+            sellCustomers.push({ id: data.id, name: data.name, phone: data.phone ?? '', cnic: data.cnic ?? '' });
             // Auto-pick into the right role
             const ddId     = role === 'buyer' ? 'sell-buyer-cust-dd'  : 'sell-seller-cust-dd';
             const hiddenId = role === 'buyer' ? 'sell-buyer-cust-id'  : 'sell-seller-cust-id';
             const inputId  = role === 'buyer' ? 'sell-buyer-cust-search' : 'sell-seller-cust-search';
-            pickPerson(ddId, hiddenId, inputId, c.id, c.name, c.phone ?? '', c.cnic ?? '', role);
+            pickPerson(ddId, hiddenId, inputId, data.id, data.name, data.phone ?? '', data.cnic ?? '', role);
             closeCreateCustomerModal();
         })
         .catch(() => {
-            document.getElementById('create-cust-error').textContent = 'Failed to save. Please try again.';
-            document.getElementById('create-cust-error').classList.remove('hidden');
+            errEl.textContent = 'Network error. Please check your connection and try again.';
+            errEl.classList.remove('hidden');
         });
     }
     </script>
